@@ -1,0 +1,24 @@
+/* Minimal, theme-agnostic styling for the article disclosure.
+ *
+ * Deliberately plain and low-specificity. The disclosure has to be legible in
+ * whatever theme is active, but it must not fight that theme's design — so this
+ * inherits colour and font from the surrounding content and only asserts the
+ * things that carry meaning: separation from the article body, and an accent
+ * rule marking it as not-prose.
+ *
+ * currentColor throughout, so it works on a light or a dark theme without
+ * knowing which it is in. A theme that wants to style it properly overrides
+ * .art-disclose and this stops mattering.
+ */
+.art-disclose {
+  margin: 0 0 28px;
+  padding: 14px 0 14px 16px;
+  border-left: 3px solid currentColor;
+  opacity: .85;
+}
+
+.art-disclose p {
+  margin: 0;
+  font-size: .9375em;
+  line-height: 1.55;
+}

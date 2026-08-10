@@ -1,0 +1,35 @@
+# The plugin baseline, one slug per line.
+#
+# Single source of truth, read by scripts/provision.sh so the server and the
+# local container cannot drift. Blank lines and # comments are ignored.
+#
+# A trailing ":inactive" means install but do not activate.
+#
+# Reviewed 2026-08-10 for Everything4Cats. Nothing here is topic-specific: an
+# affiliate review site needs the same SEO, link-cloaking, redirect, mail and
+# backup layers whatever it writes about.
+
+seo-by-rank-math                # SEO, sitemaps, and Article schema
+fluent-smtp                     # transactional mail relay; without it password resets fail silently
+updraftplus                     # backups, configured to off-site storage before launch
+redirection                     # 301s, so reorganising the site does not shed links
+limit-login-attempts-reloaded   # brute-force throttling, paired with fail2ban at the OS layer
+complianz-gdpr                  # Canadian and GDPR consent
+thirstyaffiliates               # affiliate link cloaking and tracking
+
+wp-super-cache:inactive         # activated only after the site is live; caching hides changes
+google-site-kit:inactive        # inert until its Google OAuth completes against a real domain
+
+# ---------------------------------------------------------------------------
+# NOT in this list, deliberately:
+#
+# An SEO plugin's schema module. Rank Math can emit Article and Review markup,
+# and the compliance plugin in plugins/e4c-compliance already emits Article.
+# Two Article blocks on one page is an error rather than a tie-break, so
+# Rank Math's rich-snippet module stays off. See the build log.
+#
+# A reviews/ratings plugin. Marking up an affiliate comparison with
+# aggregateRating is what Google's self-serving-review policy prohibits, and the
+# penalty is a manual action rather than a lost rich result. If star ratings are
+# ever wanted they need a real, defensible methodology first.
+# ---------------------------------------------------------------------------
