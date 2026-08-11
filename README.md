@@ -324,3 +324,131 @@ appeared in any answer.
   nothing about the zone. The external resolvers are the authority here.
 
 **Deferred:** TLS. Certbot runs after the site is serving, not before.
+
+#### Step 3 — WordPress provisioned on the server ✅
+
+**Goal:** run `provision.sh` on the Lightsail instance and get WordPress
+serving `everything4cats.ca`.
+
+**Why it matters:** this is the first time the provisioner has run anywhere
+other than a container, and the container could never execute three of its
+steps. Everything about the stack that had only ever been asserted was either
+confirmed here or was wrong here.
+
+**Commands:**
+
+```bash
+# ON SERVER
+sudo install -d -o ubuntu -g ubuntu -m 755 /srv/everything4cats
+git clone https://github.com/SimBuds/everything4cats.git /srv/everything4cats
+cd /srv/everything4cats
+
+sudo SITE_DOMAIN=everything4cats.ca SITE_TITLE='Everything4Cats' \
+     ADMIN_USER=casey ADMIN_EMAIL=<admin-email> \
+     bash scripts/provision.sh
+```
+
+The checkout lives in `/srv`, not in `/home/ubuntu`. Ubuntu creates the home
+directory mode `0750`, and `www-data` has to traverse the checkout to follow
+the theme symlink. That would not have failed here, because `THEME_DIR` is
+unset and no symlink is created for the theme. It would have failed when the
+theme landed, which is the expensive place to find it.
+
+The clone is anonymous over HTTPS from a public repository, so no deploy key,
+token, or credential of any kind exists on the server.
+
+**Verify:** the three steps that only ever reported `skipped` in the container
+all executed. `swapon --show` reports a 2 GB `/swapfile` with
+`vm.swappiness = 10`. `ufw` is active and, critically, allows `22/tcp` as well
+as `80,443/tcp` on both IPv4 and IPv6. `fail2ban` is active with the `sshd`
+jail loaded. `apache2`, `mysql`, `php8.3-fpm` and `fail2ban` all report
+`active`.
+
+`wp option get` returns `https://everything4cats.ca` for both `home` and
+`siteurl`, and `/%postname%/` for the permalink structure. `wp plugin list`
+matches `scripts/plugins.txt` exactly, with `wp-super-cache` and
+`google-site-kit` inactive as that file specifies. The compliance plugin is a
+symlink into `/srv/everything4cats/plugins/e4c-compliance` and is **active**,
+which is what proves the `/srv` placement works. Apache returned `200` locally
+with a `Link` header pointing at the site's REST route.
+
+**Q&A:**
+
+- *`wp rewrite flush` printed a warning about `.htaccess`. Is that a failure?*
+  No, and it is anticipated. The script checks for `RewriteEngine On`
+  afterwards and writes the rewrite block itself when WP-CLI declines to. The
+  file was verified to contain the full `BEGIN WordPress` block, owned by
+  `www-data`. Without it every URL except the home page would 404, and it would
+  look like a TLS problem rather than a rewrite problem.
+- *Does `WP_HOME=https` with no certificate cause a redirect loop?* No. It
+  changes the URLs WordPress generates, not the ones Apache accepts. The site
+  answered `200` over plain HTTP with https asset URLs in the body, which is
+  mixed content until certbot runs, not a loop.
+- *Was anything wrong?* One thing. `blog_public` was `1`, the WordPress install
+  default, leaving a fresh domain indexable while carrying only the sample post
+  and the default theme. Set to `0` immediately. It is flipped back to `1` at
+  launch, which is the last item in the plan's order of work and also what
+  gates the sitemaps.
+
+**Deferred:** TLS, and the remaining items the provisioner prints on exit:
+mail relay, backups, page cache, and narrowing SSH.
+
+#### Step 4 — TLS issued, site live ✅
+
+**Goal:** serve `everything4cats.ca` and `www` over HTTPS, with renewal proven
+rather than assumed.
+
+**Why it matters:** the provisioner pins `WP_HOME` and `WP_SITEURL` to `https`
+before a certificate exists, which is deliberate. It means no database-wide URL
+migration is ever needed, at the cost of a short window where the site emits
+https URLs it cannot yet serve. This step closes that window. A certificate
+also expires in ninety days, so an unproven renewal is a scheduled outage.
+
+**Commands:**
+
+```bash
+# ON SERVER
+sudo certbot --apache -d everything4cats.ca -d www.everything4cats.ca
+sudo certbot renew --dry-run
+```
+
+**Verify:** certificate issued for both names and deployed to a generated
+`everything4cats-le-ssl.conf`, expiring 2026-11-09. `certbot renew --dry-run`
+reported all simulated renewals succeeded, which is the part that matters,
+because the renewal timer was already installed with the package and only the
+dry run proves it can actually complete.
+
+Checked from a workstation rather than from the server:
+
+```bash
+# ON HOST
+curl -sS -D- https://everything4cats.ca -o /dev/null
+curl -sS -D- http://everything4cats.ca -o /dev/null
+curl -sS -o /dev/null -w '%{http_code}\n' https://everything4cats.ca/hello-world/
+```
+
+The apex returns `200`. `http://` returns `301` to `https://` from Apache. The
+`www` name returns `301` to the apex from WordPress, carrying
+`X-Redirect-By: WordPress`, which is the canonical redirect rather than a TLS
+failure: the handshake to `www` completed before the redirect was issued, so
+the certificate genuinely covers both names. `curl` validates the chain by
+default, so a silent `200` is itself the certificate check, and
+`ssl_verify_result` was confirmed as `0` from a second machine.
+
+`hello-world/` returns `200` and a nonexistent path returns `404`.
+
+**Q&A:**
+
+- *Two different 301s, is one of them wrong?* No. They come from different
+  layers and both are correct. Apache issues the http-to-https redirect that
+  certbot configured, identifiable by its `iso-8859-1` error-page content type.
+  WordPress issues the www-to-apex canonical redirect, identifiable by
+  `X-Redirect-By`.
+- *Was the `.htaccess` warning from Step 3 ever a real problem?* No, and this
+  is where that is finally settled. `hello-world/` returning `200` while a
+  missing path returns `404` can only happen if the rewrite rules are in force.
+  The provisioner's fallback had written them correctly.
+
+**Deferred:** the four items the provisioner still prints on exit, namely
+narrowing SSH, the mail relay, backups and snapshots, and the page cache. Plus
+the theme, the content, and flipping `blog_public` back to `1` at launch.
