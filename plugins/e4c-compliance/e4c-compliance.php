@@ -4,6 +4,7 @@
  * Description: Affiliate disclosure, sponsored/nofollow tagging and Article schema. Deliberately a plugin, not theme code.
  * Version: 1.0.0
  * Requires PHP: 7.4
+ * Author: SimBuds
  * License: GPL-2.0-or-later
  *
  * WHY THIS IS A PLUGIN
