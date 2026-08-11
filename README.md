@@ -276,3 +276,51 @@ static IP, firewall) is browser-only and was done by hand.
   tracked as its own phase rather than left as a note here.
 - *Monthly cost recorded?* No. The plan price is $12 and is treated as the
   working figure for the runway. Confirm against the first real bill.
+
+#### Step 2 — DNS pointed at the instance ✅
+
+**Goal:** `everything4cats.ca` and `www` both resolve to the instance, before
+WordPress is installed rather than after.
+
+**Why it matters:** provisioning against a bare IP and moving to the domain
+later means a database-wide URL migration, because WordPress stores absolute
+URLs. Pointing DNS first makes that migration unnecessary. Propagation also
+takes time that is free to spend now and expensive to spend later, and certbot
+cannot issue a certificate until both names already resolve.
+
+**Commands:** records created by hand at Namecheap, on their BasicDNS
+nameservers. An `A` on the apex to the static IP, and a `CNAME` on `www` to the
+apex. Verified with a DNS-over-HTTPS query against two public resolvers, which
+bypasses the local cache and shows what Let's Encrypt will see:
+
+```bash
+# ON HOST
+curl -sS -H 'accept: application/dns-json' \
+  "https://cloudflare-dns.com/dns-query?name=everything4cats.ca&type=A"
+curl -sS "https://dns.google/resolve?name=www.everything4cats.ca&type=A"
+```
+
+**Verify:** four checks, two names against two independent resolvers, all
+`Status: 0`. The apex returns a single A record with `TTL 300`. `www` returns a
+type-5 CNAME to `everything4cats.ca.` followed by the same A record, which is
+the shape certbot needs to validate both names from one request. Google's
+response named the authoritative server as `dns2.registrar-servers.com`,
+confirming the zone is served by Namecheap BasicDNS rather than by a leftover
+custom or web-hosting nameserver set. No parking record and no second A record
+appeared in any answer.
+
+**Q&A:**
+
+- *Two A records, or A plus CNAME?* A plus CNAME, which is what was built. A
+  single certificate still covers both names because certbot follows the CNAME.
+  The apex cannot itself be a CNAME, so this is the conventional shape.
+- *Why not `dig`?* It is not installed on the workstation, and neither is `nc`.
+  Two checks were handed over that failed on a missing tool and misreported the
+  cause as a DNS failure. The DNS-over-HTTPS check replaced them because it
+  needs only `curl` and `python3`, and it distinguishes a failed request from a
+  real negative answer.
+- *`resolvectl` returned an error, is that a problem?* No. `systemd-resolved`
+  is not running on the workstation, which is a local tooling gap and says
+  nothing about the zone. The external resolvers are the authority here.
+
+**Deferred:** TLS. Certbot runs after the site is serving, not before.
