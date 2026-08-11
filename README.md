@@ -448,6 +448,17 @@ default, so a silent `200` is itself the certificate check, and
   is where that is finally settled. `hello-world/` returning `200` while a
   missing path returns `404` can only happen if the rewrite rules are in force.
   The provisioner's fallback had written them correctly.
+- *A CAA record was added, does it break renewal?* No. A CAA record pinning
+  `0 issue "letsencrypt.org"` was added at Namecheap after issuance, so that no
+  other certificate authority can issue for this domain. Public resolvers still
+  reported NODATA afterwards, which proved nothing either way: the zone's SOA
+  minimum is 3601 seconds, so an earlier query had cached the negative answer
+  for an hour. `certbot renew --dry-run` was used instead and succeeded. That is
+  definitive where a resolver query is not, because Let's Encrypt reads CAA from
+  the authoritative nameservers with no cache, and the staging environment it
+  dry-runs against enforces CAA exactly as production does. Re-run the dry run
+  after any future change to the CAA record, since a malformed one fails
+  silently and only at renewal.
 
 **Deferred:** the four items the provisioner still prints on exit, namely
 narrowing SSH, the mail relay, backups and snapshots, and the page cache. Plus
