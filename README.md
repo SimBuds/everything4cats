@@ -210,4 +210,69 @@ undecided-provider state to Lightsail, and four cross-references from code into
 `PLAN.md` and `AGENTS.md` that no longer resolved were replaced with the facts
 they had been fetching, so they cannot dangle again.
 
-Not yet verified on a real host. Nothing has been created on AWS.
+EC2 was briefly chosen and then reversed the same day, after the two were priced
+against each other. The numbers are in `PLAN.md` under *Decided* so the
+comparison is not run a third time.
+
+#### Step 1 — Lightsail instance created and baselined ✅
+
+**Goal:** a bare Ubuntu 24.04 host in Canada (Central), reachable over SSH, with
+a stable address and the web ports open, and its starting state recorded.
+
+**Why it matters:** every later change is read against this baseline. Without a
+record of what the image shipped, a problem three steps from now cannot be told
+apart from something that was always there. The static IP matters for a reason
+that is invisible today: the default address is released on stop and start, and
+that failure surfaces weeks later as a dead site and a TLS renewal that cannot
+validate.
+
+**Commands:**
+
+```bash
+# ON HOST
+ssh-keygen -t ed25519 -C "everything4cats" -f ~/.ssh/everything4cats
+```
+
+```bash
+# ON HOST
+scp -i ~/.ssh/everything4cats scripts/inventory.sh ubuntu@<static-ip>:/tmp/inventory.sh \
+  && ssh -i ~/.ssh/everything4cats ubuntu@<static-ip> 'sudo bash /tmp/inventory.sh'
+```
+
+The key pair was generated locally and only the public half was uploaded, so the
+private key has never left the workstation. Console work (instance creation,
+static IP, firewall) is browser-only and was done by hand.
+
+**Verify:**
+
+- Ubuntu 24.04.4 LTS, x86-64, 2 vCPU.
+- `1.9Gi` memory and a `58G` root filesystem, which together pin the instance to
+  the 2 GB plan. The next tier down would have reported roughly 1 GB and 40 G,
+  so the plan is confirmed from the shell rather than from the console.
+- `Hardware Model: t3.small`, confirming Lightsail runs on EC2 underneath. This
+  is the same hardware class that costs more on raw EC2 once the volume and the
+  public address are billed separately.
+- apache2, nginx, php, php-fpm, mysql, mariadb, wp, docker and certbot all
+  absent. Nothing listening on 80 or 443. The host is genuinely clean, so the
+  provisioner's do-not-clobber guard will pass without warnings.
+- `passwordauthentication no` and pubkey-only SSH as delivered.
+- `Swap: 0B`, ufw `inactive`, fail2ban `not installed`. These are the three
+  steps the container could only skip, and they will actually execute here.
+- Static IP attached, ports 80 and 443 open for IPv4 and IPv6, region Canada
+  (Central), all confirmed in the console.
+
+**Q&A:**
+
+- *Lightsail or EC2?* Settled on Lightsail, after a reversal. At 2 GB the
+  Lightsail plan is $12 flat against roughly $21 on EC2 once the volume and the
+  public IPv4 address are added, and it includes 3 TB of transfer where EC2
+  includes 100 GB. Transfer was the deciding line, because it is the only cost
+  here that scales with success rather than with time.
+- *Own SSH key or a downloaded one?* Own key, uploaded. The private half never
+  leaves the workstation, and there is no `.pem` to lose. This also matches the
+  existing per-project key convention on the workstation.
+- *Automatic snapshots?* Not enabled. Deliberate for now, since there is no data
+  to lose. It must be turned on before any real content exists, and it is
+  tracked as its own phase rather than left as a note here.
+- *Monthly cost recorded?* No. The plan price is $12 and is treated as the
+  working figure for the runway. Confirm against the first real bill.

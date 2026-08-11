@@ -48,7 +48,6 @@ else
 		--exclude=.git \
 		--exclude=node_modules \
 		--exclude=__pycache__ \
-		--exclude=reference \
 		. | tar -xf - -C "$CTX/repo"
 fi
 
