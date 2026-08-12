@@ -448,13 +448,31 @@ else
 	wp_run theme activate "$THEME_DIR"
 fi
 
-# The compliance plugin travels with the repository rather than coming from
-# wordpress.org, so it is linked in the same way and activated by slug below.
-if [ -d "$REPO_DIR/plugins/e4c-compliance" ] \
-	&& [ ! -e "$WP_DIR/wp-content/plugins/e4c-compliance" ]; then
-	ln -s "$REPO_DIR/plugins/e4c-compliance" "$WP_DIR/wp-content/plugins/e4c-compliance"
-fi
-wp_run plugin activate e4c-compliance >/dev/null 2>&1 || true
+# Plugins that travel with the repository rather than coming from
+# wordpress.org, linked the same way the theme is so a git pull is the whole
+# deploy.
+#
+# Every directory under plugins/ is deployed. This was hardcoded to
+# e4c-compliance until 2026-08-12, when plugins/e4c-content arrived carrying the
+# review and roundup post types and was silently not deployed. The theme depends
+# on those post types, so the symptom was not "a plugin is missing" but
+# "/reviews/ 404s and every review template is unreachable", which reads as a
+# broken theme. Iterating the directory means the next repo plugin cannot
+# reintroduce that.
+for plugin_src in "$REPO_DIR"/plugins/*/; do
+	[ -d "$plugin_src" ] || continue
+	plugin_slug="$(basename "$plugin_src")"
+
+	if [ ! -e "$WP_DIR/wp-content/plugins/$plugin_slug" ]; then
+		ln -s "${plugin_src%/}" "$WP_DIR/wp-content/plugins/$plugin_slug"
+	fi
+
+	# No error suppression. Activating an already-active plugin warns and exits
+	# 0, so the only thing `|| true` used to hide was a real activation failure,
+	# such as a fatal in the plugin itself. That is precisely the failure worth
+	# stopping for.
+	wp_run plugin activate "$plugin_slug" >/dev/null
+done
 
 # --- plugins ----------------------------------------------------------------
 #

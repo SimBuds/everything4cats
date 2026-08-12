@@ -345,7 +345,55 @@ are execution-assist and each stays open across turns.
   of the `Remaining` block and become their own phases once the site is live.
 
 ### Phase 8: The base theme is integrated.
-- Status: planned, blocked on the theme landing in the repo
+- Status: in progress, 2026-08-12. The theme landed, so this is unblocked.
+  Cleanup done and audited. **Not closeable yet**: four blockers below.
+- Cleanup done 2026-08-12, at Casey's request:
+  - `design/` created and split into `tool/` (generated design-tool artefacts,
+    including an 783 KB state file and three `.dc.html` canvases) and `source/`
+    (the cat photography, logo, favicons, and `tokens.json`). None of it sits in
+    the theme, because `provision.sh` symlinks the theme into the webroot and
+    anything placed there becomes publicly fetchable.
+  - `e4c-theme/` renamed to `theme/`, Casey's choice. `theme` is therefore also
+    the slug WordPress records, so the live site needs `THEME_DIR=theme`.
+  - Display name set to "Everything 4 Cats - Theme". Author was already SimBuds.
+  - Trailing references updated in `theme/README.md` and in the
+    `e4c-compliance` docblock that named the old directory.
+- Audit results, 2026-08-12, each run rather than reasoned:
+  - **21 PHP files parse clean**, with a control proving the linter fails on
+    broken input. The first attempt at this check was a false report: `php` is
+    not installed on the workstation, so it printed 21 syntax errors that were
+    all the checker failing. Re-run inside the container.
+  - **`theme.json` is valid JSON, version 3.**
+  - **Token resolution is clean.** Every `--wp--preset--*` reference in
+    `style.css` resolves to a preset that exists: 15/16 colours, 2/2 font
+    families, 13/14 font sizes, 5/6 spacing steps.
+  - **Field contract is intact.** All eight fields the theme reads are
+    registered by `e4c-content`. `e4c_picks` is registered and unread, which is
+    correct rather than dead: it backs the roundup single, which is not built.
+- **All four blockers cleared 2026-08-12.** Harness now runs 51 checks, up from
+  42, and passes. Evidence in the phase report below.
+- **Blockers as originally found, in the order they would bite:**
+  1. **`provision.sh` deploys only `e4c-compliance`.** The symlink at line 453
+     is hardcoded to that one directory, so `plugins/e4c-content/` never reaches
+     the server. Without it the `review` and `roundup` post types do not exist,
+     `/reviews/` 404s, and every review template is unreachable. This is the one
+     that makes the theme look broken rather than unstyled.
+  2. **The three declared fonts do not exist.** `theme.json` names
+     `assets/fonts/caprasimo-400.woff2`, `figtree-variable.woff2` and
+     `figtree-variable-italic.woff2`. The repo contains no woff2 at all, so
+     WordPress generates `@font-face` rules pointing at 404s and both families
+     fall back silently to Georgia and system-ui.
+  3. **ACF Pro is not in the baseline and cannot be**, since it is commercial
+     and not on wordpress.org. `e4c-content` degrades correctly, warning in the
+     admin while keeping posts published and falling back to raw post meta, so
+     this is a documentation gap rather than a crash.
+  4. **The theme has never been rendered.** No template has been run against
+     WordPress, on the server or in the container. Everything above is static
+     analysis.
+- Deferred, and correctly so: seven of the nine screens are unbuilt and
+  `index.php` catches them, which the theme README documents as walking-skeleton
+  order. Nine inline `style=` attributes across four templates duplicate what
+  the component layer should own, worth a cleanup phase but not a blocker.
 - Files to touch: unknown until the theme arrives. Planned properly then, not
   guessed at now.
 - Reuse audit: `provision.sh` already deploys a theme by symlink from the
@@ -554,6 +602,57 @@ are execution-assist and each stays open across turns.
 - Deferred out of this phase: applying it to the live host, which is a
   `# ON SERVER` handoff written at the end of this phase and run by Casey.
 
+### Phase 8b: The seven remaining screens exist as templates.
+- Status: complete in the repo, 2026-08-12. Harness passed at 56 checks, up from
+  51. Every template rendered with real content, 200 and zero PHP errors on all
+  six content-bearing screens. Not yet deployed to the live host.
+- Status history: planned 2026-08-12, Casey chose build-then-deploy over deploy-first.
+- Files to add: `theme/taxonomy-cat-category.php`, `theme/single-roundup.php`,
+  `theme/single.php`, `theme/page-how-we-test.php`, `theme/search.php`,
+  `theme/page-newsletter.php`, `theme/404.php`. Files to change:
+  `theme/style.css` (component classes for the new parts),
+  `theme/index.php` (its header claims these are unbuilt),
+  `theme/README.md` (the "Still to build" list).
+- Reuse audit: read every existing template before writing one.
+  `template-parts/card-post.php` already renders a card for any of the three
+  types and is reused by all four archive-shaped screens rather than copied.
+  `e4c_field()`, `e4c_button()`, `e4c_hero_image()` and `e4c_method_statement()`
+  exist in `inc/template-helpers.php` and are reused. `.e4c-section`,
+  `.e4c-grid`, `.e4c-panel`, `.e4c-card`, `.e4c-tag`, `.e4c-list`, `.e4c-btn`,
+  `.e4c-article`, `.e4c-cols` and `.e4c-shell` already exist in `style.css`. No
+  new template part is created where `card-post.php` fits.
+- Content model, read rather than assumed: `review` and `roundup` are the two
+  CPTs, guides are core `post`, and `cat-category` is one hierarchical taxonomy
+  registered across all three. That is why the category archive is
+  `taxonomy-cat-category.php` and not three separate archives, and why the guide
+  article is `single.php`.
+- Simplest approach considered: let `index.php` keep catching all seven and only
+  style it harder. Rejected on one concrete requirement: the roundup single has
+  to render the `e4c_picks` repeater, whose subfields are `review`, `award` and
+  `why`, and a generic archive template cannot render a field-driven ranking.
+- **Inline styles are not propagated.** The existing templates carry nine
+  `style=` attributes, already logged as a smell. New components get classes in
+  `style.css` rather than growing that number.
+- Scenarios (written from the requirement, before any code):
+  - A `cat-category` term archive lists reviews, roundups and guides together.
+  - A roundup renders its picks in order, each linking to the reviewed item,
+    and renders nothing rather than an empty block when `e4c_picks` is unset.
+  - A guide article renders body prose at the reading measure.
+  - Search returns results and offers a post-type facet that preserves the query.
+  - Search with no results, and 404, both offer a route onward rather than a
+    dead end.
+  - Every new template renders with ACF absent, since the container has none.
+- Verification (three bullets or fewer):
+  - `bash scripts/test-provision/run.sh` passes, with new HTTP checks covering
+    the category archive, a roundup, a guide, search, and the 404.
+  - A roundup with a populated `e4c_picks` repeater renders its picks, proven by
+    creating one in the container and reading the output.
+  - Every new template is fetched and grepped for `Fatal error`, `Warning:`,
+    `Notice:` and `Deprecated:`, since a PHP notice still returns 200.
+- Deferred: the roundup post-type archive at `/best/`, which `index.php`
+  already handles correctly through `the_archive_title()`. Not in Casey's list
+  of seven and not worth a template that would duplicate `archive-review.php`.
+
 ### Phase 12 (execution-assist): WordPress delivers mail through an authenticated relay.
 - Status: planned, not yet detailed. Renumbered from Phase 11 on 2026-08-11.
   **Blocked on a decision**: which relay.
@@ -585,6 +684,108 @@ are execution-assist and each stays open across turns.
 
 ## Phase reports
 <!-- pasted at Stage 5, newest first -->
+
+### Phase 8b, 2026-08-12
+
+**Changed.** Seven new templates: `taxonomy-cat-category.php`,
+`single-roundup.php`, `single.php`, `page-how-we-test.php`,
+`page-newsletter.php`, `search.php`, `404.php`. Three files edited:
+`theme/style.css` (component classes for the new parts), `theme/index.php` (its
+header described these as unbuilt), `theme/README.md` (the screen map).
+`scripts/test-provision/verify.sh` gained five checks.
+
+**Tested.** `bash scripts/test-provision/run.sh`, exit 0, `ALL CHECKS PASSED`,
+56 checks against the previous 51. 28 PHP files parse clean, with a control
+proving the linter rejects broken input.
+
+**Rendered with real content, which status codes alone would not have shown.** A
+category term, a review, a guide, a roundup with a populated `e4c_picks` row, and
+the two pages were created in the container. All six content-bearing screens
+returned 200 with zero occurrences of fatal, parse error, warning, notice or
+deprecated in the body.
+
+- The roundup rendered its award label, its `why` line, the linked review's
+  title, the rank marker, and the buy URL **read from the linked review** rather
+  than duplicated onto the pick.
+- The category archive rendered all three content types on one page, which is
+  the entire reason `cat-category` is registered across `review`, `roundup` and
+  `post`.
+- All of it ran through the raw post-meta fallback, because the container has no
+  ACF. That is the harder path and the one least likely to be exercised by hand.
+
+**Decisions made while building, each recorded because each could have gone the
+other way.** One taxonomy template rather than three per-type archives. Guides
+as core posts rather than a third CPT. Search facets as links carrying
+`post_type` rather than JavaScript, so a filtered view has a shareable URL and
+works before any script loads, with zero-count facets not rendered at all. No
+`aggregateRating` on the picks, matching the existing constraint. The newsletter
+template renders no form of its own, because CASL puts the burden of proving
+consent on the sender and the provider's confirmed opt-in record is that proof.
+
+**The inline-style smell was not propagated.** The nine existing `style=`
+attributes are unchanged, but the new templates use classes added to
+`style.css` in the pagination section rather than appended to the bottom.
+
+**Deferred.** The roundup archive at `/best/`, which `index.php` handles through
+`the_archive_title()`. The nine pre-existing inline styles. **Deployment to the
+live host**, which is the whole of what remains in Phase 8.
+
+### Phase 8 (repo half), 2026-08-12
+
+**Changed.** `scripts/provision.sh`, `scripts/test-provision/Dockerfile`,
+`scripts/test-provision/verify.sh`, `scripts/plugins.txt`, `README.md`,
+`theme/README.md`, `theme/style.css`,
+`plugins/e4c-compliance/e4c-compliance.php`, plus the `e4c-theme/` to `theme/`
+rename, the `design/` split, and six new files under `theme/assets/fonts/`.
+
+**Tested.** `bash scripts/test-provision/run.sh`, exit 0, `ALL CHECKS PASSED`,
+51 checks against the previous 42.
+
+**The four blockers, each cleared with evidence:**
+
+1. **Plugin deploy generalised.** `provision.sh` hardcoded a symlink for
+   `e4c-compliance`, so `plugins/e4c-content` would never have reached the
+   server and the review post types would not have existed. It now loops every
+   directory under `plugins/`. The harness check is driven from the same
+   directory listing rather than from plugin names, because a check naming one
+   plugin would have missed this defect too. `review post type registered` and
+   `roundup post type registered` catch the symptom, which presents as a broken
+   theme rather than as a missing plugin.
+2. **Fonts fetched.** Three woff2 faces, roughly 20 KB each, `wOF2` magic
+   verified, with both OFL licence files because OFL 1.1 requires them on
+   redistribution. Three new HTTP checks assert each returns 200, since a
+   missing font never errors and simply renders in a fallback family.
+3. **ACF Pro documented** in `scripts/plugins.txt` and `README.md`. It is
+   commercial and not on wordpress.org, so no slug can install it. Recorded in
+   `plugins.txt` and not only the README precisely because nothing breaks
+   without it.
+4. **The theme now renders, and is proven to.** `THEME_DIR=theme` is set as
+   `ENV` in the test Dockerfile rather than inline, because `verify.sh` runs in
+   its own layer. Before this, no template had ever been executed by anything.
+
+**The walking skeleton was proven end to end**, beyond what the harness asserts.
+A review post was created in the container with all five scalar fields, and the
+rendered page returned 200 at 34,542 bytes with zero fatals, warnings, notices
+or deprecations, every field value present in the output, `/reviews/` returning
+200, and no Apache error-log lines. That also proves `e4c_field()`'s fallback
+contract: the container has no ACF, so every field rendered from raw post meta.
+
+**Also removed a suppression.** The old plugin activation ended in
+`>/dev/null 2>&1 || true`. Activating an already-active plugin warns and exits
+0, so the only thing that could ever hide was a genuine fatal in a plugin.
+
+**One earlier false report, corrected.** The first PHP lint printed 21 syntax
+errors. `php` is not installed on the workstation, so all 21 were the checker
+failing rather than the files. Re-run inside the container with a control
+proving the linter fails on broken input.
+
+**Deferred.** Seven of nine screens unbuilt, with `index.php` catching them, in
+the walking-skeleton order the theme README documents. Nine inline `style=`
+attributes across four templates duplicate what the component layer should own.
+One unused colour preset (`second-deepest`) and one unused spacing step (`20`),
+both still reachable from the editor palette, so neither is provably dead.
+**The live host still has none of this**, which is the remaining half of this
+phase.
 
 ### Phase 10, 2026-08-11
 

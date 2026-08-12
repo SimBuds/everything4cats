@@ -1,0 +1,293 @@
+/*
+Theme Name: Everything 4 Cats - Theme
+Theme URI: https://everything4cats.ca
+Author: SimBuds
+Description: Hybrid theme for Everything4Cats. Field-driven classic templates for reviews and roundups, theme.json tokens for the block editor. Presentation only: post types, fields and compliance live in plugins.
+Version: 0.1.0
+Requires at least: 6.5
+Tested up to: 6.8
+Requires PHP: 8.1
+License: GPL-2.0-or-later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: e4c
+Tags: blog, custom-menu, editor-style, block-patterns
+*/
+
+/* Every value below resolves to a theme.json preset. theme.json is the single
+   source of truth for tokens: the editor reads it too, and duplicating a
+   literal here would drift from what Gutenberg renders. */
+
+:root {
+	--e4c-page: var(--wp--preset--color--page);
+	--e4c-page-veil: color-mix(in srgb, var(--wp--preset--color--page) 92%, transparent);
+	--e4c-surface: var(--wp--preset--color--surface);
+	--e4c-rule: var(--wp--preset--color--rule);
+	--e4c-ink: var(--wp--preset--color--ink);
+	--e4c-ink-muted: var(--wp--preset--color--ink-muted);
+	--e4c-ink-meta: var(--wp--preset--color--ink-meta);
+	--e4c-brand: var(--wp--preset--color--brand);
+	--e4c-brand-tint: var(--wp--preset--color--brand-tint);
+	--e4c-brand-text: var(--wp--preset--color--brand-text);
+	--e4c-brand-text-strong: var(--wp--preset--color--brand-text-strong);
+	--e4c-on-brand: var(--wp--preset--color--page);
+	--e4c-second: var(--wp--preset--color--second);
+	--e4c-second-tint: var(--wp--preset--color--second-tint);
+	--e4c-second-patch: var(--wp--preset--color--second-patch);
+	--e4c-second-text: var(--wp--preset--color--second-text);
+	--e4c-second-deep: var(--wp--preset--color--second-deep);
+	--e4c-gutter: var(--wp--custom--gutter);
+	--e4c-page-max: var(--wp--style--global--wide-size, 1440px);
+	--e4c-ease: var(--wp--custom--ease);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+img, svg, video { max-width: 100%; height: auto; }
+
+.e4c-skip {
+	position: absolute; left: -9999px; top: 0; z-index: 200;
+	background: var(--e4c-brand); color: var(--e4c-on-brand);
+	padding: 12px 20px; border-radius: 0 0 var(--wp--custom--radius-control) 0;
+	font-size: var(--wp--preset--font-size--meta); font-weight: 700; text-decoration: none;
+}
+.e4c-skip:focus { left: 0; }
+
+.e4c-shell { max-width: var(--e4c-page-max); margin: 0 auto; padding-inline: var(--e4c-gutter); }
+
+/* Disclosure bar. The wording is the compliance plugin's when it renders one;
+   this bar is the site's standing method statement, not a paid-link notice. */
+.e4c-bar {
+	background: var(--e4c-second-deep); color: var(--e4c-second-tint);
+	font-size: var(--wp--preset--font-size--caption); letter-spacing: 0.01em;
+	padding: 9px 20px; text-align: center; margin: 0;
+}
+
+.e4c-header {
+	position: sticky; top: 0; z-index: 60;
+	background: var(--e4c-page-veil); backdrop-filter: blur(10px);
+	border-bottom: 1px solid var(--e4c-rule);
+}
+.e4c-header__inner {
+	display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+	gap: 10px 24px; padding-block: 12px;
+}
+.e4c-brand { flex: 1 1 160px; display: flex; align-items: center; }
+.e4c-brand img { height: 42px; width: auto; }
+.e4c-brand__text {
+	font-family: var(--wp--preset--font-family--display);
+	font-size: var(--wp--preset--font-size--title-lg); color: var(--e4c-ink); text-decoration: none;
+}
+.e4c-nav { flex: 0 1 auto; }
+.e4c-nav ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.e4c-nav a {
+	display: block; text-decoration: none; white-space: nowrap;
+	font-size: var(--wp--preset--font-size--small); font-weight: 700;
+	padding: 9px 15px; border-radius: var(--wp--custom--radius-pill);
+	color: var(--e4c-ink); transition: background var(--e4c-ease), color var(--e4c-ease);
+}
+.e4c-nav a:hover, .e4c-nav a:focus-visible { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
+.e4c-nav .current-menu-item > a, .e4c-nav .current-menu-parent > a { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
+.e4c-actions { flex: 1 1 160px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+
+/* The five nav links and both actions cannot share one row below this width,
+   so the links drop to their own centred row instead of the buttons breaking off. */
+@media (max-width: 1120px) {
+	.e4c-nav { order: 3; flex: 1 1 100%; }
+	.e4c-brand { flex: 1 1 auto; }
+	.e4c-actions { flex: 0 0 auto; }
+}
+
+.e4c-btn {
+	display: inline-flex; align-items: center; justify-content: center;
+	font-family: inherit; font-size: var(--wp--preset--font-size--ui); font-weight: 700;
+	padding: 13px 24px; border-radius: var(--wp--custom--radius-pill);
+	border: 1px solid transparent; cursor: pointer; text-decoration: none;
+	transition: background var(--e4c-ease), color var(--e4c-ease), border-color var(--e4c-ease);
+}
+.e4c-btn--primary { background: var(--e4c-brand); color: var(--e4c-on-brand); }
+.e4c-btn--primary:hover, .e4c-btn--primary:focus-visible { background: var(--e4c-brand-text); color: var(--e4c-on-brand); }
+.e4c-btn--secondary { background: transparent; color: var(--e4c-brand-text); border-color: var(--e4c-brand); }
+.e4c-btn--secondary:hover, .e4c-btn--secondary:focus-visible { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
+.e4c-btn--sm { font-size: var(--wp--preset--font-size--meta); padding: 9px 18px; }
+:where(a, button, input, summary):focus-visible { outline: 2px solid var(--e4c-brand-text); outline-offset: 2px; }
+
+.e4c-tag {
+	display: inline-block; font-size: var(--wp--preset--font-size--eyebrow);
+	font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+	padding: 6px 12px; border-radius: var(--wp--custom--radius-tag);
+	background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong);
+}
+.e4c-tag--second { background: var(--e4c-second-patch); color: var(--e4c-second-text); }
+
+.e4c-panel {
+	background: var(--e4c-surface); border: 1px solid var(--e4c-rule);
+	border-radius: var(--wp--custom--radius-panel); padding: var(--wp--custom--panel-pad);
+}
+.e4c-card {
+	background: var(--e4c-surface); border: 1px solid var(--e4c-rule);
+	border-radius: var(--wp--custom--radius-card); padding: var(--wp--custom--panel-pad);
+	display: flex; flex-direction: column; gap: 14px;
+}
+.e4c-card__media { border-radius: var(--wp--custom--radius-media); overflow: hidden; background: var(--e4c-page); }
+.e4c-card__media img { display: block; width: 100%; height: auto; }
+.e4c-card__title { margin: 0; font-size: var(--wp--preset--font-size--title); }
+.e4c-card__title a { color: inherit; text-decoration: none; }
+.e4c-card__title a:hover { color: var(--e4c-brand-text); }
+.e4c-card__meta { margin: 0; font-size: var(--wp--preset--font-size--meta); color: var(--e4c-ink-meta); }
+.e4c-grid { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+.e4c-main { padding-bottom: var(--wp--preset--spacing--70); }
+.e4c-section { padding-block: var(--wp--preset--spacing--50); }
+.e4c-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: var(--wp--preset--spacing--30); }
+.e4c-section__head h2 { margin: 0; font-size: var(--wp--preset--font-size--heading-section); }
+
+.e4c-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: var(--wp--preset--spacing--50); align-items: center; padding-block: var(--wp--preset--spacing--60); }
+.e4c-hero h1 { margin: 16px 0 18px; font-size: var(--wp--preset--font-size--heading-hero); line-height: 1.02; letter-spacing: -0.02em; max-width: 15ch; }
+.e4c-hero__lede { margin: 0 0 26px; font-size: var(--wp--preset--font-size--lede); line-height: 1.55; max-width: 52ch; color: var(--e4c-ink-muted); }
+.e4c-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.e4c-hero__figure { margin: 0; }
+.e4c-hero__figure img { display: block; width: 100%; height: auto; border-radius: var(--wp--custom--radius-card); background: var(--e4c-surface); }
+
+/* Review */
+.e4c-review { padding-block: var(--wp--preset--spacing--50); }
+.e4c-review__head { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--wp--preset--spacing--50); align-items: start; }
+.e4c-review__head h1 { margin: 14px 0 16px; font-size: var(--wp--preset--font-size--heading-page); }
+.e4c-review__dek { margin: 0 0 20px; font-size: var(--wp--preset--font-size--lede); color: var(--e4c-ink-muted); max-width: 46ch; }
+.e4c-review__byline { margin: 0; font-size: var(--wp--preset--font-size--meta); color: var(--e4c-ink-meta); }
+.e4c-verdict { margin-block: var(--wp--preset--spacing--40); display: grid; gap: 18px; }
+.e4c-verdict__label { font-size: var(--wp--preset--font-size--eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--e4c-second-text); }
+.e4c-verdict__line { margin: 0; font-family: var(--wp--preset--font-family--display); font-size: var(--wp--preset--font-size--heading-sub); line-height: 1.2; }
+.e4c-verdict__price { font-size: var(--wp--preset--font-size--title-lg); font-weight: 700; }
+.e4c-cols { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.e4c-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: var(--wp--preset--font-size--body); }
+.e4c-list li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+.e4c-list__mark { font-weight: 700; }
+.e4c-list--pros .e4c-list__mark { color: var(--e4c-brand-text); }
+.e4c-list--cons .e4c-list__mark { color: var(--e4c-second-text); }
+.e4c-specs { width: 100%; border-collapse: collapse; font-size: var(--wp--preset--font-size--small); }
+.e4c-specs th, .e4c-specs td { text-align: left; padding: 11px 0; border-bottom: 1px solid var(--e4c-rule); vertical-align: top; }
+.e4c-specs th { width: 40%; font-weight: 700; color: var(--e4c-ink-muted); }
+.e4c-buy { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.e4c-buy__note { font-size: var(--wp--preset--font-size--caption); color: var(--e4c-ink-meta); }
+
+/* The compliance plugin injects .art-disclose above the first paragraph of the
+   article body. Do not render a second disclosure here: the plugin honours
+   _e4c_post_affiliate already, and two notices would word the same duty twice. */
+.e4c-article { max-width: var(--wp--custom--measure-body); }
+.e4c-article > * + * { margin-top: 1.1em; }
+.e4c-article .art-disclose {
+	margin: 0 0 1.4em; padding: 14px 18px;
+	background: var(--e4c-second-tint); color: var(--e4c-second-deep);
+	border-radius: var(--wp--custom--radius-tile);
+	font-size: var(--wp--preset--font-size--caption); line-height: 1.55;
+}
+.e4c-article .art-disclose a { color: var(--e4c-second-text); }
+.e4c-article a[rel~="sponsored"] { text-underline-offset: 2px; }
+
+.e4c-patch {
+	background: var(--e4c-second-patch); color: var(--e4c-second-deep);
+	border-radius: var(--wp--custom--radius-patch); padding: var(--wp--preset--spacing--60);
+	display: grid; gap: 16px; justify-items: start;
+}
+.e4c-patch h2 { margin: 0; font-size: var(--wp--preset--font-size--heading-sub); color: inherit; }
+.e4c-patch p { margin: 0; max-width: 52ch; }
+
+.e4c-footer { border-top: 1px solid var(--e4c-rule); margin-top: var(--wp--preset--spacing--70); padding-block: var(--wp--preset--spacing--50); font-size: var(--wp--preset--font-size--small); }
+.e4c-footer__cols { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.e4c-footer h2 { font-family: var(--wp--preset--font-family--text); font-size: var(--wp--preset--font-size--meta); text-transform: uppercase; letter-spacing: 0.1em; color: var(--e4c-ink-meta); margin: 0 0 12px; }
+.e4c-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.e4c-footer a { text-decoration: none; }
+.e4c-footer a:hover { text-decoration: underline; }
+.e4c-footer__legal { margin-top: var(--wp--preset--spacing--40); color: var(--e4c-ink-meta); font-size: var(--wp--preset--font-size--caption); }
+
+.e4c-pagination { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--wp--preset--spacing--40); }
+.e4c-pagination .page-numbers { padding: 9px 14px; border-radius: var(--wp--custom--radius-pill); text-decoration: none; background: var(--e4c-surface); }
+.e4c-pagination .page-numbers.current { background: var(--e4c-brand); color: var(--e4c-on-brand); }
+
+/* Archive and page headings. These exist so the templates added on 2026-08-12
+   do not repeat the inline style= attributes the earlier ones carry. */
+.e4c-page-title { margin: 0; font-size: var(--wp--preset--font-size--heading-page); }
+.e4c-page-lede { margin: 0; color: var(--e4c-ink-muted); max-width: 44ch; }
+.e4c-section-title { margin: 0 0 var(--wp--preset--spacing--30); font-size: var(--wp--preset--font-size--heading-minor); }
+
+/* Facets. Used three ways: subcategory links on a term archive, the post-type
+   filter on search, and the category trail under a guide. One component with
+   an optional count rather than three near-identical ones. */
+.e4c-facets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.e4c-facets--footer { margin-top: var(--wp--preset--spacing--50); padding-top: var(--wp--preset--spacing--30); border-top: 1px solid var(--e4c-rule); }
+.e4c-facet {
+	display: inline-flex; align-items: center; gap: 8px;
+	padding: 8px 14px; border-radius: var(--wp--custom--radius-pill);
+	background: var(--e4c-surface); color: var(--e4c-ink);
+	font-size: var(--wp--preset--font-size--ui); text-decoration: none;
+	border: 1px solid transparent; transition: background var(--e4c-ease), border-color var(--e4c-ease);
+}
+.e4c-facet:hover { border-color: var(--e4c-rule); }
+.e4c-facet--on { background: var(--e4c-brand); color: var(--e4c-on-brand); }
+.e4c-facet__count { font-size: var(--wp--preset--font-size--caption); opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+/* Empty states: no results, empty category, 404. All three need the same
+   thing, which is a heading, a sentence, and a way out. */
+.e4c-empty {
+	display: grid; gap: var(--wp--preset--spacing--30); justify-items: start;
+	max-width: var(--wp--custom--measure-body);
+	padding-block: var(--wp--preset--spacing--50);
+}
+.e4c-empty h1, .e4c-empty h2 { margin: 0; }
+.e4c-empty p { margin: 0; color: var(--e4c-ink-muted); }
+
+/* Roundup picks. An ordered list because the ranking is the content, so the
+   numbering survives CSS being unavailable. The visible rank marker is
+   aria-hidden and the ol supplies the real semantics. */
+.e4c-picks { margin-top: var(--wp--preset--spacing--50); }
+.e4c-picks__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--wp--preset--spacing--30); counter-reset: e4c-pick; }
+.e4c-pick {
+	display: grid; grid-template-columns: auto 1fr auto; gap: var(--wp--preset--spacing--30);
+	align-items: start; padding: var(--wp--custom--panel-pad);
+	background: var(--e4c-surface); border-radius: var(--wp--custom--radius-card);
+}
+.e4c-pick__rank {
+	font-family: var(--wp--preset--font-family--display);
+	font-size: var(--wp--preset--font-size--title); line-height: 1;
+	color: var(--e4c-second); font-variant-numeric: tabular-nums;
+}
+.e4c-pick__body { display: grid; gap: 10px; justify-items: start; }
+.e4c-pick__title { margin: 0; font-size: var(--wp--preset--font-size--heading-minor); }
+.e4c-pick__title a { text-decoration: none; }
+.e4c-pick__title a:hover { text-decoration: underline; }
+.e4c-pick__why { margin: 0; color: var(--e4c-ink-muted); max-width: 56ch; }
+.e4c-pick__media img { border-radius: var(--wp--custom--radius-media); display: block; }
+
+/* Below this the rank, body and thumbnail cannot share a row without the
+   thumbnail squeezing the prose to a column of single words. */
+@media (max-width: 640px) {
+	.e4c-pick { grid-template-columns: auto 1fr; }
+	.e4c-pick__media { display: none; }
+}
+
+/* The pledge panels on the methodology and newsletter pages. Same surface as
+   the verdict panel, which is deliberate: both are the site making a claim it
+   can be held to. */
+.e4c-pledge { margin-block: var(--wp--preset--spacing--40); max-width: var(--wp--custom--measure); }
+.e4c-pledge .e4c-list { margin-top: 14px; }
+
+/* Core's search form, which get_search_form() emits on the 404 and search
+   templates. Styled rather than replaced with a custom form: core's markup is
+   already labelled and accessible. */
+.e4c-shell .search-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.e4c-shell .search-form label { flex: 1 1 220px; }
+.e4c-shell .search-field {
+	width: 100%; padding: 11px 16px; border-radius: var(--wp--custom--radius-control);
+	border: 1px solid var(--e4c-rule); background: var(--e4c-page); color: var(--e4c-ink);
+	font: inherit; font-size: var(--wp--preset--font-size--ui);
+}
+.e4c-shell .search-field:focus-visible { outline: 2px solid var(--e4c-brand); outline-offset: 2px; }
+.e4c-shell .search-submit {
+	padding: 11px 20px; border: 0; border-radius: var(--wp--custom--radius-control);
+	background: var(--e4c-brand); color: var(--e4c-on-brand);
+	font: inherit; font-weight: 700; cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}

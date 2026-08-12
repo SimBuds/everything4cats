@@ -32,3 +32,4 @@ vendor/
 # Agent working files and personal notes. Deliberately local-only: these are
 # Casey's own development and learning material, not public-facing repo docs.
 QUESTIONS.md
+figma/

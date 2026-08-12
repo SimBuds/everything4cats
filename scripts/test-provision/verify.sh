@@ -84,11 +84,21 @@ if [ -n "${THEME_DIR:-}" ]; then
 	ck "theme is a symlink"     "1" "$([ -L "/var/www/everything4cats/wp-content/themes/$THEME_DIR" ] && echo 1 || echo 0)"
 	ck "theme symlink resolves" "1" "$([ -f "/var/www/everything4cats/wp-content/themes/$THEME_DIR/style.css" ] && echo 1 || echo 0)"
 fi
-# The compliance plugin is symlinked from the repository the same way a theme
-# is, and unlike the theme it exists today. This is the check that proves the
-# repository-linked-extension path works at all.
-ck "compliance plugin is a symlink" "1" "$([ -L /var/www/everything4cats/wp-content/plugins/e4c-compliance ] && echo 1 || echo 0)"
-ck "compliance plugin active"       "active" "$(W plugin get e4c-compliance --field=status)"
+# Every plugin directory in the repository must be symlinked and active. Driven
+# from the directory listing rather than a hardcoded name, because the
+# provisioner deploying only e4c-compliance while plugins/e4c-content sat
+# undeployed is exactly the defect this replaced, and a check naming one plugin
+# would not have caught it either.
+for plugin_path in /repo/plugins/*/; do
+	plugin_slug="$(basename "$plugin_path")"
+	ck "$plugin_slug is a symlink" "1" "$([ -L "/var/www/everything4cats/wp-content/plugins/$plugin_slug" ] && echo 1 || echo 0)"
+	ck "$plugin_slug active"       "active" "$(W plugin get "$plugin_slug" --field=status)"
+done
+# The review post type comes from e4c-content. If that plugin is not deployed
+# this is empty, which is the failure that reads as a broken theme rather than
+# as a missing plugin.
+ck "review post type registered"  "1" "$(W post-type get review --field=name >/dev/null && echo 1 || echo 0)"
+ck "roundup post type registered" "1" "$(W post-type get roundup --field=name >/dev/null && echo 1 || echo 0)"
 ck ".htaccess has rules"   "1"            "$(grep -qc 'RewriteEngine On' /var/www/everything4cats/.htaccess 2>/dev/null && echo 1 || echo 0)"
 ck "wp-config.php present" "1"            "$([ -f /var/www/everything4cats/wp-config.php ] && echo 1 || echo 0)"
 ck "wp-config.php owner"   "www-data"     "$(stat -c %U /var/www/everything4cats/wp-config.php)"
@@ -115,6 +125,16 @@ ck "GET /"                 "200"          "$(H /)"
 ck "GET /hello-world/ (post permalink)"  "200" "$(H /hello-world/)"
 ck "GET /sample-page/ (page permalink)"  "200" "$(H /sample-page/)"
 ck "GET /definitely-not-here/ is a 404"  "404" "$(H /definitely-not-here/)"
+# search.php renders with no matches, which is the path that exercises its empty
+# state and its facet loop against zero counts. A search template that only
+# works when something matches is half a template.
+ck "GET /?s=litter (search)"             "200" "$(H '/?s=litter')"
+# A PHP notice still returns 200, so status alone proves nothing about whether
+# the new templates are clean. These fetch the body and count error strings.
+E() { curl -s -H 'Host: e4c.test' "http://127.0.0.1$1" | grep -ciE 'fatal error|parse error|warning:|notice:|deprecated:' || true; }
+ck "search body has no PHP errors"       "0" "$(E '/?s=litter')"
+ck "404 body has no PHP errors"          "0" "$(E /definitely-not-here/)"
+ck "home body has no PHP errors"         "0" "$(E /)"
 # xmlrpc.php must be refused, and POST is the check that matters. Measured here
 # before the block existed: GET returned 405, which reads like a refusal and is
 # not one, while POST returned 200 and answered system.listMethods advertising
@@ -122,6 +142,15 @@ ck "GET /definitely-not-here/ is a 404"  "404" "$(H /definitely-not-here/)"
 XP() { curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Host: e4c.test' \
 	-d '<methodCall><methodName>system.listMethods</methodName></methodCall>' \
 	http://127.0.0.1/xmlrpc.php; }
+# The fonts theme.json declares must actually be served. Until 2026-08-12 all
+# three were absent, so WordPress generated @font-face rules pointing at 404s
+# and both families fell back silently. A missing font never errors, it just
+# renders in something else, which is why this is asserted rather than eyeballed.
+if [ -n "${THEME_DIR:-}" ]; then
+	for font in caprasimo-400 figtree-variable figtree-variable-italic; do
+		ck "font $font.woff2 served" "200" "$(H "/wp-content/themes/$THEME_DIR/assets/fonts/$font.woff2")"
+	done
+fi
 ck "GET /xmlrpc.php is denied"  "403" "$(H /xmlrpc.php)"
 ck "POST /xmlrpc.php is denied" "403" "$(XP)"
 # Asserted on the body as well as the status, because a 403 from the wrong

@@ -207,7 +207,8 @@ function e4c_compliance_affiliate_disclosure( $content ) {
 	 * is flattened into plain text and glued to the front of the excerpt.
 	 *
 	 * The three conditions above were written for the previous theme, where no
-	 * excerpt was ever generated on a singular page. e4c-theme generates one
+	 * excerpt was ever generated on a singular page. The current theme (theme/,
+	 * "Everything 4 Cats - Theme") generates one
 	 * for the article dek, so this passed every guard and printed the disclosure
 	 * directly under the headline, running into the first sentence with no space
 	 * between them. Observed 2026-08-01 by screenshot.

@@ -133,19 +133,48 @@ Every command in that file is a read. It changes nothing.
 
 ## Adding the theme
 
-Put the theme directory in the repository root, then tell the provisioner its
-name:
+The theme is `theme/`, display name **Everything 4 Cats - Theme**. Tell the
+provisioner its directory name:
 
 ```bash
-# IN CONTAINER
-THEME_DIR=your-theme-dir bash /workspace/scripts/provision.sh
+# ON SERVER
+THEME_DIR=theme bash scripts/provision.sh
 ```
 
 Without `THEME_DIR` the script says so and leaves WordPress on its bundled
 default. It does not guess, and it does not activate a theme that is not there.
 
 The theme is deployed by **symlink** from the checkout, so a pull is the whole
-deploy and there is no copy step to forget.
+deploy and there is no copy step to forget. Every directory under `plugins/` is
+deployed the same way and activated.
+
+### ACF Pro is a manual step
+
+`plugins/e4c-content` registers its field groups through Advanced Custom Fields
+Pro, which is commercial and not on wordpress.org, so `scripts/plugins.txt`
+cannot install it and the provisioner cannot either. Install and licence it by
+hand in wp-admin.
+
+Nothing breaks without it, which is the reason this is easy to miss. The post
+types still register, reviews stay published, `e4c-content` prints an admin
+notice, and the theme's `e4c_field()` falls back to raw post meta of the same
+name. What is missing is the editing UI: verdict, pros, cons and the spec table
+have no fields in the editor until ACF Pro is active. That fallback is proven
+rather than assumed, because the container has no ACF and renders a review with
+every field populated.
+
+### Design source lives outside this repository
+
+The design canvas, the photography and the logo files are not kept here. They
+were removed on 2026-08-12 once the theme had been extracted from them, and the
+originals live outside the repository.
+
+`figma/` is the exception and stays, because it is a handoff format rather than
+a working file: the W3C token export, the two Tokens Studio theme files, and the
+frame bundle for html.to.design.
+
+Nothing design-related belongs inside `theme/`. The theme is symlinked into the
+webroot, so anything placed there becomes publicly fetchable.
 
 ---
 

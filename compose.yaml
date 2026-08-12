@@ -30,7 +30,7 @@ services:
       - "2222:22"
 
     volumes:
-      # The repository itself, so theme/ and design/ are reachable from inside
+      # The repository itself, so theme/ and plugins/ are reachable from inside
       # without being baked into the image. Edits on either side are visible to
       # the other immediately.
       - ./:/workspace

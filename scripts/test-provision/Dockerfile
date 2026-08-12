@@ -13,6 +13,14 @@ COPY repo /repo
 COPY drive.py /drive.py
 COPY verify.sh /verify.sh
 
+# The theme landed 2026-08-12, so the harness now provisions with it active
+# instead of leaving WordPress on twentytwentyfive. Set as ENV rather than
+# inline so drive.py and verify.sh both see it: drive.py passes os.environ
+# through, and verify.sh runs in its own layer where an inline variable would
+# not survive. Until this existed the theme's templates had never been executed
+# by anything.
+ENV THEME_DIR=theme
+
 # Run 1: the first-ever provision of an empty host.
 RUN python3 /drive.py
 
