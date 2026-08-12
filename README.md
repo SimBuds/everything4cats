@@ -93,11 +93,32 @@ passing. Those steps are proven on the real host only.
 # ON SERVER
 sudo SITE_DOMAIN=everything4cats.ca SITE_TITLE='Everything4Cats' \
      ADMIN_USER=casey ADMIN_EMAIL=you@example.com \
+     ADMIN_DISPLAY_NAME='SimBuds' \
      bash scripts/provision.sh
 ```
 
 The script prompts for the database password with a silent read, so no
 credential enters the shell history, the process list, or this repository.
+
+`ADMIN_DISPLAY_NAME` is optional and sets the public byline, which WordPress
+otherwise leaves equal to `ADMIN_USER`. That default matters more than it looks:
+`plugins/e4c-compliance` publishes `display_name` into the Article JSON-LD on
+every post, and `user_nicename` becomes the author archive URL, so an unset
+byline publishes the login in machine-readable form on every page. Left unset,
+the script says so and names the exposure rather than guessing a byline.
+
+Two things this script does only on a **fresh install**, never on a re-run:
+setting `blog_public` to `0`, and applying `ADMIN_DISPLAY_NAME`. Both are
+guarded because the script is designed to be re-run, and an unconditional
+version of either would silently undo a deliberate change on a live site. The
+practical consequence is that setting `ADMIN_DISPLAY_NAME` and re-running does
+nothing to an existing install. Change the byline on a running site directly:
+
+```bash
+# ON SERVER
+sudo -u www-data wp --path=/var/www/everything4cats user update <login> \
+  --display_name='SimBuds' --user_nicename='simbuds'
+```
 
 Before installing anything on a new server, establish the starting point:
 
@@ -463,3 +484,75 @@ default, so a silent `200` is itself the certificate check, and
 **Deferred:** the four items the provisioner still prints on exit, namely
 narrowing SSH, the mail relay, backups and snapshots, and the page cache. Plus
 the theme, the content, and flipping `blog_public` back to `1` at launch.
+
+#### Step 5 — SSH verified key-only ✅
+
+**Goal:** close item 5 of the provisioner's exit list by proving SSH cannot be
+brute-forced. No change was made, because the Ubuntu cloud image already
+shipped the required state.
+
+**Why it matters:** item 5 offers two routes, restricting the source address in
+the Lightsail firewall, or key-only authentication plus fail2ban. The source
+restriction was planned first and then rejected, because this account connects
+through a VPN whose exit address rotates, so a single-address rule would cause
+routine self-lockout.
+
+That is not a weakening. Source restriction is defence in depth and was only
+ever buying quieter logs and one less reachable service. The boundary is
+key-only authentication: with `PasswordAuthentication no` in force, an attacker
+who reaches port 22 has nothing to guess without the private key. `fail2ban` was
+already verified running in Step 3 and covers the log-noise half.
+
+Two details make this check trustworthy rather than decorative:
+
+- **`sshd -T`, not `/etc/ssh/sshd_config`.** Ubuntu cloud images drop overrides
+  into `/etc/ssh/sshd_config.d/*.conf`, so the main file can state one thing
+  while the running daemon does another. `sshd -T` resolves the `Include`
+  directives and prints what is actually in force.
+- **`KbdInteractiveAuthentication` matters as much as `PasswordAuthentication`.**
+  With it enabled alongside `UsePAM yes`, PAM can still complete a
+  password-equivalent exchange even though password authentication reads as
+  disabled. A host can look locked down on the first directive and not be.
+
+**Commands:**
+
+```bash
+# ON SERVER
+sudo sshd -T | grep -iE '^(port|permitrootlogin|passwordauthentication|pubkeyauthentication|permitemptypasswords|kbdinteractiveauthentication|usepam) '
+```
+
+**Verify:** all seven directives returned the required values.
+
+```
+port 22
+usepam yes
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+permitemptypasswords no
+```
+
+`without-password` is the legacy spelling of `prohibit-password` and has
+identical behaviour, so root can only ever authenticate by key. Port 22 stays
+open at the Lightsail firewall deliberately, which the provisioner's own item 5
+sanctions as the alternative to source restriction.
+
+**Q&A:**
+
+- *Why not restrict the source address anyway, as a second layer?* Because the
+  exit address rotates behind a VPN, so the rule would need editing on most
+  reconnects and would be reverted in frustration rather than maintained. If the
+  VPN ever offers a dedicated or static exit address, the restriction becomes
+  practical and goes on top of key-only auth rather than instead of it.
+- *Is leaving port 22 open to the internet a real exposure?* Not a meaningful
+  one here. Password authentication is off, so the only credential that works is
+  a private key held on one machine. What remains is log noise from automated
+  scanners, which is what fail2ban is for. Millions of servers run exactly this
+  way.
+- *Should `PermitRootLogin` be tightened from `without-password` to `no`?*
+  Marginal. Root login already requires a key, and Ubuntu cloud images install a
+  forced-command entry in root's `authorized_keys` that refuses the session and
+  prints a message directing the user to the `ubuntu` account. Tightening it is
+  a one-line change with close to zero practical gain, so it was left alone
+  rather than changed for the sake of a visible edit.

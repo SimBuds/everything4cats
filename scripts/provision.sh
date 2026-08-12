@@ -50,6 +50,9 @@ SITE_TITLE="${SITE_TITLE:-Everything4Cats}"
 SITE_SCHEME="${SITE_SCHEME:-https}"
 ADMIN_USER="${ADMIN_USER:-}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-}"
+# Optional. The public byline, kept distinct from ADMIN_USER so the login is not
+# published in the Article schema. See the core-install block for why.
+ADMIN_DISPLAY_NAME="${ADMIN_DISPLAY_NAME:-}"
 
 WP_DIR="/var/www/everything4cats"
 DB_NAME="${DB_NAME:-everything4cats}"
@@ -332,6 +335,49 @@ if ! wp_run core is-installed 2>/dev/null; then
 		--admin_email="$ADMIN_EMAIL" \
 		--skip-email
 	unset ADMIN_PASS
+
+	# Discourage search engines, on a FRESH INSTALL ONLY.
+	#
+	# WordPress installs with blog_public=1, so without this a brand new site is
+	# indexable from its first minute, carrying nothing but the Hello World post
+	# and the Sample Page. Those are the pages Google crawls fastest, and they
+	# become the site's first impression. Found on the real host 2026-08-11 and
+	# corrected by hand there, which is why it is codified here.
+	#
+	# INSIDE the core-install guard on purpose, never unconditional. This script
+	# is re-run by design (the theme phase re-runs it), and an unconditional
+	# `option update blog_public 0` would silently de-index a launched site on
+	# the next deploy. The failure would be invisible for weeks, because nothing
+	# about the site looks different when it is noindexed.
+	#
+	# Flipping it back to 1 is a launch step, listed in the Remaining block.
+	wp_run option update blog_public 0 >/dev/null
+
+	# The byline WordPress publishes, distinct from the login used to sign in.
+	#
+	# `wp core install` sets display_name and user_nicename to the admin login.
+	# plugins/e4c-compliance publishes display_name into the Article JSON-LD on
+	# every post, and user_nicename becomes the author archive URL, so the
+	# default leaks the login in machine-readable form on every page. Found
+	# 2026-08-11.
+	#
+	# Optional rather than required, and skipped loudly when unset, matching how
+	# THEME_DIR behaves. A byline is a content decision and this script has no
+	# basis to invent one.
+	#
+	# Inside the core-install guard for the same reason blog_public is: outside
+	# it, every redeploy would overwrite a display name changed in wp-admin. The
+	# consequence is that setting this variable and re-running does nothing to an
+	# existing install. Changing the byline on a running site is a direct
+	# `wp user update`, documented in README.md under Provisioning a server.
+	if [ -n "$ADMIN_DISPLAY_NAME" ]; then
+		wp_run user update "$ADMIN_USER" \
+			--display_name="$ADMIN_DISPLAY_NAME" \
+			--user_nicename="$(printf '%s' "$ADMIN_DISPLAY_NAME" | tr '[:upper:] ' '[:lower:]-')" \
+			>/dev/null
+	else
+		skipped "byline: ADMIN_DISPLAY_NAME is not set, so display_name is the login '$ADMIN_USER' and will be published in Article schema on every post"
+	fi
 fi
 
 # Pretty permalinks. Requires AllowOverride All, which the vhost already sets;
@@ -416,7 +462,17 @@ while read -r line <&3; do
 	[ -n "$line" ] || continue
 
 	slug="${line%%:*}"
-	if [ "$line" = "${slug}:inactive" ]; then
+	if [ "$line" = "${slug}:delete" ]; then
+		# Shipped inside the WordPress tarball rather than installed from
+		# wordpress.org, so `wp core download` brings them back on every fresh
+		# install and they have to be removed rather than simply not installed.
+		# Guarded by is-installed so a re-run after they are already gone is a
+		# no-op rather than an error, since every deploy after the first is a
+		# re-run.
+		if wp_run plugin is-installed "$slug" 2>/dev/null; then
+			wp_run plugin delete "$slug" >/dev/null
+		fi
+	elif [ "$line" = "${slug}:inactive" ]; then
 		wp_run plugin is-installed "$slug" 2>/dev/null || wp_run plugin install "$slug"
 	else
 		wp_run plugin is-installed "$slug" 2>/dev/null || wp_run plugin install "$slug"
@@ -510,13 +566,33 @@ Ubuntu. Everything below touches the hosting provider, currently AWS Lightsail.
 
        certbot renew --dry-run
 
-  5. Narrow SSH. 22 is open for recovery, not as the end state. Restrict the
-     source to your own address in the Lightsail firewall, or move to key-only
-     plus fail2ban, which is already running.
+     If a CAA record is added later to pin issuance to one authority, re-run
+     that dry run. Let's Encrypt reads CAA from the authoritative nameservers
+     with no cache, so the dry run is the only definitive test, and a malformed
+     CAA record fails silently until the day renewal is due.
+
+  5. Check SSH before changing it. Verified 2026-08-11: the Ubuntu cloud image
+     already ships key-only, so this is usually a confirmation rather than an
+     edit. Read the effective config, not the file:
+
+       sshd -T | grep -iE '^(passwordauthentication|kbdinteractiveauthentication|pubkeyauthentication|permitrootlogin|permitemptypasswords) '
+
+     Use sshd -T because Ubuntu drops overrides into sshd_config.d/*.conf, so
+     sshd_config can say one thing while the daemon does another. Check
+     kbdinteractiveauthentication as well as passwordauthentication: with the
+     first left on alongside UsePAM, PAM can still complete a password-equivalent
+     exchange while the second reads as disabled.
+
+     Key-only auth is the boundary. Restricting the source address in the
+     Lightsail firewall is defence in depth on top of it, and it is only
+     practical from a static address. Behind a VPN with a rotating exit address
+     it causes routine self-lockout, so it was deliberately not applied here.
 
      Do not close 22 outright. The browser SSH client in the console is a rescue
      path, not a working admin channel, so leaving 22 reachable from somewhere
-     is the difference between locked down and locked out.
+     is the difference between locked down and locked out. That rescue claim is
+     inherited and has not been tested against a restrictive firewall rule, so
+     test it before relying on it.
 
   6. Configure FluentSMTP. Outbound port 25 is blocked by default, so this needs
      a relay over 587/465 or an HTTP API rather than direct delivery. Until it
@@ -532,5 +608,19 @@ Ubuntu. Everything below touches the hosting provider, currently AWS Lightsail.
   8. Activate the page cache only once the site is live:
 
        sudo -u www-data wp --path=$WP_DIR plugin activate wp-super-cache
+
+  9. At launch, and last, make the site indexable:
+
+       sudo -u www-data wp --path=$WP_DIR option get blog_public   # expect 0
+       sudo -u www-data wp --path=$WP_DIR option update blog_public 1
+
+     This script sets it to 0 on a fresh install, so the site is not crawled
+     while it carries only Hello World and Sample Page. Delete those fixtures
+     before flipping it, because they are the pages a search engine reaches
+     first.
+
+     The same switch gates the sitemaps. Submit the sitemap to Search Console on
+     the day you flip this and not before, since submitting one that is not
+     being served teaches Search Console the sitemap is broken.
 
 EOF

@@ -29,7 +29,9 @@ vendor/
 .DS_Store
 *.log
 
-# Agent working file.
+# Agent working files and personal notes. Deliberately local-only: these are
+# Casey's own development and learning material, not public-facing repo docs.
 IMPLEMENT.md
 AGENTS.md
 PLAN.md
+QUESTIONS.md

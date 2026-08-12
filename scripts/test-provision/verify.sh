@@ -49,6 +49,17 @@ fi
 ck "permalink structure"   "/%postname%/" "$(W option get permalink_structure)"
 ck "WP_HOME"               "https://e4c.test" "$(W eval 'echo WP_HOME;')"
 ck "DISALLOW_FILE_EDIT"    "1"            "$(W eval 'echo DISALLOW_FILE_EDIT ? 1 : 0;')"
+# A fresh install must not be indexable. WordPress ships blog_public=1, and a
+# brand new site carrying only Hello World and Sample Page is exactly what
+# should not be crawled. Flipping it to 1 is a launch step.
+ck "blog_public (noindex)" "0"            "$(W option get blog_public)"
+# The byline must not be the login. e4c-compliance publishes display_name into
+# the Article JSON-LD, and user_nicename becomes the author archive URL, so
+# either one matching ADMIN_USER leaks the login in machine-readable form.
+# Compared against the login rather than against a literal, so this check fails
+# on the thing that actually matters instead of on a renamed fixture.
+ck "display_name is not the login" "1" "$([ "$(W user get casey --field=display_name)" != "casey" ] && echo 1 || echo 0)"
+ck "user_nicename is not the login" "1" "$([ "$(W user get casey --field=user_nicename)" != "casey" ] && echo 1 || echo 0)"
 
 echo "== Plugins (expected from scripts/plugins.txt) =="
 while read -r line <&3; do
@@ -57,6 +68,12 @@ while read -r line <&3; do
 	slug="${line%%:*}"
 	want_status="active"
 	[ "$line" = "${slug}:inactive" ] && want_status="inactive"
+	# A ":delete" entry asserts absence. `wp plugin get` prints nothing for a
+	# plugin that is not there, so the empty capture collapses to MISSING and the
+	# check compares MISSING against MISSING. Driving this from the same file and
+	# the same loop as the install cases is what stops the harness and the
+	# provisioner from disagreeing about what plugins.txt means.
+	[ "$line" = "${slug}:delete" ] && want_status="MISSING"
 	got="$(W plugin get "$slug" --field=status)"
 	ck "$slug" "$want_status" "${got:-MISSING}"
 done 3< /repo/scripts/plugins.txt

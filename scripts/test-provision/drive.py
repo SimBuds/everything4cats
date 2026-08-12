@@ -18,6 +18,11 @@ env = dict(
     SITE_TITLE="Everything4Cats",
     ADMIN_USER="casey",
     ADMIN_EMAIL="casey@e4c.test",
+    # Deliberately unlike ADMIN_USER, so verify.sh can prove the byline is not
+    # the login. That equality is the actual defect being guarded against: the
+    # compliance plugin publishes display_name into Article JSON-LD, so a
+    # display_name equal to the login leaks it on every page.
+    ADMIN_DISPLAY_NAME="Cat Person",
     REPO_DIR="/repo",
     DEBIAN_FRONTEND="noninteractive",
     TERM="dumb",

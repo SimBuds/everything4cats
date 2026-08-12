@@ -20,6 +20,16 @@ thirstyaffiliates               # affiliate link cloaking and tracking
 wp-super-cache:inactive         # activated only after the site is live; caching hides changes
 google-site-kit:inactive        # inert until its Google OAuth completes against a real domain
 
+# A trailing ":delete" removes a plugin WordPress ships inside its own tarball.
+# These are not installed from wordpress.org, so leaving them out of this list is
+# not enough: `wp core download` puts them back on every fresh install.
+#
+# Added 2026-08-11, after both were deleted by hand on the live server. Keeping
+# them here rather than hardcoded in provision.sh is what makes this file the
+# single source of truth for plugin state rather than most of it.
+akismet:delete                  # comment spam filter; comments are not part of this site's plan
+hello:delete                    # Hello Dolly, a 2004 joke plugin that prints song lyrics in the admin
+
 # ---------------------------------------------------------------------------
 # NOT in this list, deliberately:
 #
