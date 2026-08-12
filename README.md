@@ -556,3 +556,89 @@ sanctions as the alternative to source restriction.
   prints a message directing the user to the `ubuntu` account. Tightening it is
   a one-line change with close to zero practical gain, so it was left alone
   rather than changed for the sake of a visible edit.
+
+#### Step 6 — xmlrpc.php refused ✅
+
+**Goal:** make `xmlrpc.php` return 403 on every vhost, closing the
+`system.multicall` amplification route.
+
+**Why it matters:** measured on this stack before the change, `GET
+/xmlrpc.php` returned `405` and `POST /xmlrpc.php` returned `200`, answering
+`system.listMethods` with `system.multicall` and `pingback.ping` advertised.
+The `405` is the trap: it reads like a refusal while the endpoint is fully live,
+so a check that only issued a GET would have reported this closed.
+
+`system.multicall` carries many method calls inside a single HTTP request, so
+hundreds of password attempts arrive as one request. That is precisely what a
+login throttler counting requests cannot see, and it is why
+`limit-login-attempts-reloaded` and fail2ban are the wrong layer for this.
+
+Two design decisions, both recorded because both are easy to get wrong:
+
+- **Server scope, not the vhost.** `provision.sh` manages only
+  `sites-available/everything4cats.conf`, the port 80 vhost. Certbot generated
+  `everything4cats-le-ssl.conf` for 443 and the repo does not manage it. This
+  site serves HTTPS and redirects all HTTP to it, so a `<Files>` block in the
+  managed vhost would have guarded the one path nobody uses while
+  `https://everything4cats.ca/xmlrpc.php` stayed open. A fragment in
+  `conf-available/` applies to every vhost, including the one certbot writes,
+  and survives certbot regenerating it.
+- **Apache, not a WordPress filter.** `add_filter( 'xmlrpc_enabled',
+  '__return_false' )` still boots PHP and WordPress for every attempt, so the
+  amplification still costs the server, and that filter governs only the
+  authenticated methods. Apache refuses before PHP starts, and no plugin
+  setting can switch it back on.
+
+**Commands:**
+
+```bash
+# ON SERVER
+git -C /srv/everything4cats pull
+sudo install -m 0644 /srv/everything4cats/docker/e4c-xmlrpc.conf \
+  /etc/apache2/conf-available/e4c-xmlrpc.conf
+sudo a2enconf e4c-xmlrpc
+sudo apache2ctl configtest
+sudo systemctl reload apache2
+```
+
+**Verify:** checked over HTTPS from a workstation, which is the path that was
+actually exposed.
+
+```bash
+# ON HOST
+curl -s -o /dev/null -w 'GET  xmlrpc  %{http_code}\n' https://everything4cats.ca/xmlrpc.php
+curl -s -o /dev/null -w 'POST xmlrpc  %{http_code}\n' -X POST \
+  -d '<methodCall><methodName>system.listMethods</methodName></methodCall>' \
+  https://everything4cats.ca/xmlrpc.php
+curl -s -o /dev/null -w 'GET  /       %{http_code}\n' https://everything4cats.ca/
+```
+
+```
+GET  xmlrpc  403
+POST xmlrpc  403
+GET  /       200
+```
+
+The home page check is not padding. `<Files "xmlrpc.php">` at server scope
+applies to every vhost, so a still-working home page is what rules out the block
+denying more than intended.
+
+Proven in the container first, where the harness now runs 42 checks including a
+POST assertion and a check that `system.multicall` is absent from the response
+body. All three were shown to fail against the pre-change image before the fix
+existed.
+
+**Q&A:**
+
+- *If `GET` already returned `405`, was it ever really open?* Yes, completely.
+  `xmlrpc.php` rejects GET by design and answers POST, which is the only method
+  it uses. The `405` was WordPress saying "wrong verb", not Apache saying "no".
+  This is the reason the harness check issues a POST and reads the body rather
+  than trusting a status code.
+- *Does anything break?* Nothing in use here. Jetpack is not installed, the
+  WordPress mobile app uses the REST API, and no plugin in `scripts/plugins.txt`
+  needs xmlrpc. Pingbacks and trackbacks stop working, which is deliberate: they
+  are a spam vector this site has no use for.
+- *Why `403` rather than `404`?* A 403 is honest about what happened. Hiding the
+  file behind a 404 adds nothing, because the path is in every WordPress
+  install and scanners do not consult a directory listing before trying it.

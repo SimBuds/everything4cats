@@ -7,7 +7,7 @@
   neither blocked on a decision nor on the theme.
 - Phase status roll-call: 1 complete, 2 complete, 3 complete, 4 complete,
   5 complete, 6 complete, 7 complete, 8 planned (blocked on the theme),
-  9 complete, 10 complete, 11 planned, 12 planned (blocked on a decision),
+  9 complete, 10 complete, 11 complete, 12 planned (blocked on a decision),
   13 planned (blocked on a decision), 14 named only.
 - Phases 9 to 14 were added 2026-08-11. They are items 5 to 8 of the
   provisioner's exit list plus the pre-launch work this session surfaced.
@@ -491,10 +491,10 @@ are execution-assist and each stays open across turns.
   documented in `plugins.txt` as intent.
 
 ### Phase 11: xmlrpc.php returns 403 on every vhost.
-- Status: repo work complete, 2026-08-11. Harness passed, 42 checks, up from 39.
-  All three new checks shown to fail first against the pre-change image.
-  **The live host is not yet changed**, which is the deferred handoff below and
-  the reason this phase stays open until Casey's output lands.
+- Status: complete, 2026-08-11. Harness passed at 42 checks, up from 39, all
+  three new ones shown to fail first. Applied to the live host and verified over
+  HTTPS: `GET` 403, `POST` 403, home page 200. Recorded as README build log
+  Step 6.
 - Status history: planned in full 2026-08-11. Renumbered from Phase 10 the same day.
 - Goal: close the `system.multicall` amplification route, which lets an attacker
   carry many password attempts in one HTTP request and is the pattern the login
