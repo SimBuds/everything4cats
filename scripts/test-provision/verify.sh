@@ -115,6 +115,21 @@ ck "GET /"                 "200"          "$(H /)"
 ck "GET /hello-world/ (post permalink)"  "200" "$(H /hello-world/)"
 ck "GET /sample-page/ (page permalink)"  "200" "$(H /sample-page/)"
 ck "GET /definitely-not-here/ is a 404"  "404" "$(H /definitely-not-here/)"
+# xmlrpc.php must be refused, and POST is the check that matters. Measured here
+# before the block existed: GET returned 405, which reads like a refusal and is
+# not one, while POST returned 200 and answered system.listMethods advertising
+# system.multicall. A GET-only check would have passed against a live endpoint.
+XP() { curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Host: e4c.test' \
+	-d '<methodCall><methodName>system.listMethods</methodName></methodCall>' \
+	http://127.0.0.1/xmlrpc.php; }
+ck "GET /xmlrpc.php is denied"  "403" "$(H /xmlrpc.php)"
+ck "POST /xmlrpc.php is denied" "403" "$(XP)"
+# Asserted on the body as well as the status, because a 403 from the wrong
+# layer, or a future config that returns an error page listing methods, would
+# still pass a status-only check. This is the amplifier, by name.
+ck "system.multicall not advertised" "0" "$(curl -s -X POST -H 'Host: e4c.test' \
+	-d '<methodCall><methodName>system.listMethods</methodName></methodCall>' \
+	http://127.0.0.1/xmlrpc.php | grep -c 'system.multicall' || true)"
 # Served through the symlink, so this fails if the link dangles. Conditional for
 # the same reason as the other theme checks: there is no theme yet.
 if [ -n "${THEME_DIR:-}" ]; then

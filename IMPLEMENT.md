@@ -490,11 +490,69 @@ are execution-assist and each stays open across turns.
   in the database rather than something the provisioner sets, and stays
   documented in `plugins.txt` as intent.
 
-### Phase 11 (execution-assist): xmlrpc.php returns 403.
-- Status: planned, not yet detailed. Renumbered from Phase 10 on 2026-08-11.
-- One-line goal: close the `system.multicall` amplification route, which lets an
-  attacker try many passwords in one request and is the pattern the login
-  throttler and fail2ban are least able to see.
+### Phase 11: xmlrpc.php returns 403 on every vhost.
+- Status: repo work complete, 2026-08-11. Harness passed, 42 checks, up from 39.
+  All three new checks shown to fail first against the pre-change image.
+  **The live host is not yet changed**, which is the deferred handoff below and
+  the reason this phase stays open until Casey's output lands.
+- Status history: planned in full 2026-08-11. Renumbered from Phase 10 the same day.
+- Goal: close the `system.multicall` amplification route, which lets an attacker
+  carry many password attempts in one HTTP request and is the pattern the login
+  throttler and fail2ban are least able to see, because it is one request.
+- Measured before planning, not assumed. Against the current image: `GET
+  /xmlrpc.php` returns `405`, and `POST /xmlrpc.php` returns `200` and answers
+  `system.listMethods` with `system.multicall`, `pingback.ping` and the rest
+  advertised. The GET status is therefore useless as a check, since 405 already
+  looks like a refusal while the endpoint is fully live.
+- Environment: agent's own work in the repo and the local container. A separate
+  `# ON SERVER` handoff applies it to the live host, because the repo change
+  alone does not reach a running instance.
+- Files to touch: `docker/e4c-xmlrpc.conf` (new), `scripts/provision.sh`,
+  `docker/Dockerfile`, `scripts/test-provision/verify.sh`.
+- Functions to add or change: none. Two copy-and-enable lines in the
+  provisioner beside the existing `a2enconf`, one `COPY` plus `a2enconf` in the
+  Dockerfile, and two HTTP checks.
+- Reuse audit: searched `grep -n "everything4cats.conf|a2ensite|a2enconf|Files|
+  xmlrpc" scripts/provision.sh docker/Dockerfile`, which found the vhost copy at
+  `provision.sh:182` and the `a2enconf` for php-fpm at `provision.sh:172`, and no
+  existing xmlrpc handling anywhere. Searched `grep -n "== HTTP|H()"
+  scripts/test-provision/verify.sh`, which found the `H()` helper already used by
+  four checks, extended rather than duplicated. No plugin in `plugins.txt` needs
+  xmlrpc, so nothing is being taken away from a working feature.
+- **Why this is not a vhost change, which is the trap.** `provision.sh` writes
+  only `sites-available/everything4cats.conf`, the port 80 vhost. Certbot
+  generated `everything4cats-le-ssl.conf` for 443 and the repo does not manage
+  it. The live site serves HTTPS and redirects all HTTP to it, so a `<Files>`
+  block in the managed vhost would guard the one path nobody uses and leave
+  `https://everything4cats.ca/xmlrpc.php` fully open. A fragment in
+  `conf-available/`, enabled with `a2enconf`, applies at server scope to every
+  vhost including certbot's, and survives certbot regenerating the SSL vhost.
+- Simplest approach considered: `add_filter( 'xmlrpc_enabled', '__return_false' )`
+  in the compliance plugin. Rejected on two counts. It still boots PHP and
+  WordPress for every attempt, so the amplification still costs the server, and
+  it leaves several methods reachable because that filter governs only
+  authenticated ones. Apache refuses before PHP starts and cannot be re-enabled
+  by a plugin setting.
+- Scenarios (written from the requirement, before any code):
+  - `POST /xmlrpc.php` returns 403. This is the scenario that matters, and the
+    one a GET-only check would miss entirely.
+  - `GET /xmlrpc.php` returns 403 rather than 405.
+  - The rest of the site is unaffected, proven by the existing HTTP checks still
+    passing rather than by inspection.
+  - The fragment is enabled, so a config that exists but was never `a2enconf`ed
+    fails the check rather than passing quietly.
+  - Re-running the provisioner is a no-op, since `a2enconf` on an already
+    enabled config is idempotent.
+- Verification (three bullets or fewer):
+  - `bash scripts/test-provision/run.sh` passes with the two new HTTP checks,
+    each shown to fail first against the pre-change image, where the observed
+    values are already recorded above as 405 and 200.
+  - The `POST` check is the discriminating one and is asserted on the status
+    code and on the absence of `system.multicall` from the body.
+  - `apache2ctl configtest` clean inside the harness, which the existing Apache
+    section already runs.
+- Deferred out of this phase: applying it to the live host, which is a
+  `# ON SERVER` handoff written at the end of this phase and run by Casey.
 
 ### Phase 12 (execution-assist): WordPress delivers mail through an authenticated relay.
 - Status: planned, not yet detailed. Renumbered from Phase 11 on 2026-08-11.

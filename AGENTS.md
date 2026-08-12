@@ -1209,13 +1209,16 @@ every question Casey asks and the answer that was given. It exists because the
 pillar docs record decisions and current state, not the explanations Casey
 asked for along the way.
 
-**It is gitignored, alongside `AGENTS.md`, `PLAN.md` and `IMPLEMENT.md`.**
-Casey's decision, 2026-08-11: this is personal development and learning
-material, not public-facing repo documentation. It therefore lives on one
-machine, with no Git history and no copy on the server. Treat it as unbacked
-and do not move it into a tracked doc to "preserve" it. Durable *project*
-findings still go to `README.md` or `PLAN.md` on their own merits, as they
-always did.
+**It is gitignored, and as of 2026-08-11 it is the only pillar doc that is.**
+Casey's decision: this is personal development and learning material, not
+public-facing repo documentation. It therefore lives on one machine, with no Git
+history and no copy on the server. Treat it as unbacked and do not move it into
+a tracked doc to "preserve" it. Durable *project* findings still go to
+`README.md` or `PLAN.md` on their own merits, as they always did.
+
+Corrected 2026-08-11, later the same day: this rule originally said "gitignored
+alongside `AGENTS.md`, `PLAN.md` and `IMPLEMENT.md`". Those three were
+subsequently committed, so `QUESTIONS.md` now stands alone.
 
 - **A message beginning `Question:` is the explicit trigger.** Append an entry
   in the same turn as answering. This is not optional and does not wait for a
@@ -1258,6 +1261,25 @@ the substance of the answer
 
 **Landed in:** where the resulting decision or change was recorded, or `nothing tracked`
 ```
+
+### This repo tracks `IMPLEMENT.md`, `AGENTS.md` and `PLAN.md`
+
+**Approved divergence, 2026-08-11.** The universal body above describes
+`IMPLEMENT.md` as untracked and gitignored, and treats a fresh clone as having
+none. In this repo all three are committed. `QUESTIONS.md` is the only pillar
+doc still excluded.
+
+Consequences that follow, so they are not rediscovered:
+
+- **The Stage 5 `git diff --stat` audit now includes `IMPLEMENT.md`.** Phase
+  reports written before this date say those files "do not appear in the diff",
+  which was true when written and is not any more.
+- **A fresh clone now carries the plan and the phase history.** The universal
+  body's reading, that an absent `IMPLEMENT.md` means "no work in flight", does
+  not apply here.
+- **The rule about landing durable findings in tracked docs is now easier to
+  satisfy**, since `PLAN.md` survives a clone again. It does not become
+  optional, and `QUESTIONS.md` still does not count as a durable home.
 
 ### Command labels
 

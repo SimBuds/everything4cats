@@ -11,7 +11,7 @@ A WordPress affiliate site about cats: blog content and product reviews, at
 
 ```
 compose.yaml            local test harness: one container, Ubuntu 24.04
-docker/                 the image, entrypoint, and Apache vhost
+docker/                 the image, entrypoint, Apache vhost, xmlrpc deny config
 plugins/e4c-compliance/ affiliate disclosure, sponsored rel, Article schema
 scripts/provision.sh    bare Ubuntu -> working site, idempotent
 scripts/inventory.sh    read-only audit of a server, writes nothing

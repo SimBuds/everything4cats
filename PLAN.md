@@ -47,9 +47,9 @@ The engineering is written and the hosting decision is made. Nothing is live.
 
 | | |
 |---|---|
-| `docker/`, `compose.yaml` | Ubuntu 24.04 container mirroring a real server: Apache, php-fpm, MySQL, WP-CLI, sshd. A **test harness**, not the deployment target. |
+| `docker/`, `compose.yaml` | Ubuntu 24.04 container mirroring a real server: Apache, php-fpm, MySQL, WP-CLI, sshd. A **test harness**, not the deployment target. Also holds the two Apache configs the real host uses, the vhost and `e4c-xmlrpc.conf`. |
 | `scripts/provision.sh` | Bare Ubuntu to a working site, idempotent, safe to re-run. |
-| `scripts/test-provision/` | Builds a throwaway host, provisions it **twice**, then runs 34 checks. Costs nothing and burns no hosting credits. |
+| `scripts/test-provision/` | Builds a throwaway host, provisions it **twice**, then runs 42 checks. Costs nothing and burns no hosting credits. |
 | `scripts/inventory.sh` | Read-only audit of a server, run once before anything is installed to establish the starting point. Writes nothing. |
 | `scripts/plugins.txt` | The plugin baseline, read by `provision.sh` so the two cannot drift. |
 | `plugins/e4c-compliance/` | Affiliate disclosure, `rel="sponsored nofollow"`, Article schema. **A plugin, not theme code.** |

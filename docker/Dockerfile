@@ -126,6 +126,12 @@ RUN a2enmod proxy_fcgi setenvif \
 # Docker never substitutes inside a COPYed file, so the variable arrives intact.
 COPY everything4cats.conf /etc/apache2/sites-available/everything4cats.conf
 
+# Refuse xmlrpc.php, at server scope so it covers every vhost rather than only
+# this one. Copied for the same reason the vhost is, and enabled below beside
+# the other a2en* calls. scripts/provision.sh installs the identical file on a
+# real host, so the container and the server agree.
+COPY e4c-xmlrpc.conf /etc/apache2/conf-available/e4c-xmlrpc.conf
+
 # WP-CLI. Added 2026-08-01, when plugin installation became the next real task
 # and doing it through wp-admin meant clicking rather than a reproducible list.
 #
@@ -144,6 +150,7 @@ RUN mkdir -p /var/www/everything4cats \
  && a2enmod rewrite \
  && a2dissite 000-default \
  && a2ensite everything4cats \
+ && a2enconf e4c-xmlrpc \
  && apache2ctl configtest
 
 # sshd refuses to start without its privilege-separation directory, and the

@@ -183,6 +183,14 @@ sed "s/ServerName localhost/ServerName $SITE_DOMAIN\n    ServerAlias www.$SITE_D
 	"$REPO_DIR/docker/everything4cats.conf" > /etc/apache2/sites-available/everything4cats.conf
 
 a2ensite everything4cats >/dev/null
+
+# Refuse xmlrpc.php. Server scope, not vhost scope, so it also covers the SSL
+# vhost certbot generates later and that this script does not manage. See the
+# header of docker/e4c-xmlrpc.conf for what it closes and why Apache rather than
+# a WordPress filter. a2enconf is idempotent, so a re-run is a no-op.
+install -m 0644 "$REPO_DIR/docker/e4c-xmlrpc.conf" \
+	/etc/apache2/conf-available/e4c-xmlrpc.conf
+a2enconf e4c-xmlrpc >/dev/null
 # 000-default answers on the same *:80 with no ServerName, so whichever loaded
 # first wins and the Apache welcome page shows instead of the site.
 a2dissite 000-default >/dev/null 2>&1 || true
