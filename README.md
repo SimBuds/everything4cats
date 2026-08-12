@@ -671,3 +671,65 @@ existed.
 - *Why `403` rather than `404`?* A 403 is honest about what happened. Hiding the
   file behind a 404 adds nothing, because the path is in every WordPress
   install and scanners do not consult a directory listing before trying it.
+
+#### Step 7 — theme and content plugin deployed ✅
+
+**Goal:** put `theme/` (Everything 4 Cats - Theme) and `plugins/e4c-content` on
+the live host, so the site serves the real design instead of a bundled default.
+
+**Why it matters:** this is the first deploy that carries a theme, and it moved
+three things at once: the theme symlink, a second repository plugin, and the
+self-hosted fonts. Each fails differently and only one of them is visible on the
+home page, which is why the verification below checks four surfaces rather than
+looking at the site.
+
+**Commands:**
+
+```bash
+# ON SERVER
+cd /srv/everything4cats
+sudo SITE_DOMAIN=everything4cats.ca ADMIN_USER=casey ADMIN_EMAIL=<admin-email> \
+     THEME_DIR=theme bash scripts/provision.sh
+```
+
+**Verify:** checked over HTTPS from a workstation.
+
+```
+home    200
+reviews 200
+search  200
+font    200
+404     404
+```
+
+`reviews 200` is the load-bearing one. That URL exists only if `e4c-content`
+registered the `review` post type, so it is the check that proves the second
+repository plugin actually deployed. `font 200` proves the theme symlink serves
+assets, not just templates. `404` proves the new `404.php` is reached rather
+than a server default.
+
+**Q&A:**
+
+- *The first run died with a PHP TypeError inside WP-CLI. What was it?* The
+  working directory. The script was run from `~`, and Ubuntu creates
+  `/home/ubuntu` as `0750`, so `www-data` cannot traverse it. Most `wp` commands
+  survive that because they address files absolutely, but `wp rewrite structure`
+  spawns a subprocess through `proc_open`, and `posix_spawn` fails with `EACCES`
+  when the child cannot resolve its own working directory. WP-CLI then called
+  `proc_close()` on the `false` it got back, which is the TypeError. The message
+  names WP-CLI and says nothing about directory permissions. `provision.sh` now
+  does `cd /` before any work, so the operator's shell location cannot matter.
+  Reproduced deliberately afterwards: the same command produced four error lines
+  from `/home/ubuntu` and zero from `/`.
+- *Why did the container harness never catch that?* Docker's default working
+  directory is `/`, which every user can traverse, so the harness always ran
+  from a safe location. The bug could only appear on a real host. This is a gap
+  in where the harness runs rather than in what it checks, and `cd /` closes it
+  by removing the dependency instead of adding a check.
+- *Nothing was printed for `e4c-content` during the run. Did it deploy?* It did.
+  A successful activation prints to stdout, which the script suppresses, while
+  "already active" prints to stderr, which shows. So silence was ambiguous and
+  had to be verified rather than read, which is what `reviews 200` did.
+- *Why does the closing list still say "not yet TLS" and tell me to point DNS?*
+  The script prints its full exit list on every run and has no memory of which
+  steps are done. Items 1 to 4 were completed in Steps 1, 2 and 4. Cosmetic.

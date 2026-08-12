@@ -80,6 +80,29 @@ BEHIND_TLS_PROXY="${BEHIND_TLS_PROXY:-}"
 # this script is being run from.
 REPO_DIR="${REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
+# Leave whatever directory the operator happened to be standing in.
+#
+# Everything below addresses files by absolute path, so the working directory is
+# never read. It is still inherited, and that is the problem: this script runs
+# most WordPress work as `sudo -u www-data wp`, and a child process inherits the
+# cwd of its parent. Ubuntu creates /home/ubuntu as 0750, so www-data cannot
+# traverse it.
+#
+# Most wp commands survive that, because they only read files by absolute path.
+# `wp rewrite structure` does not: it spawns a subprocess through proc_open, and
+# posix_spawn fails with EACCES when the child cannot resolve its own working
+# directory. The failure is reported as a PHP TypeError deep inside the WP-CLI
+# phar, naming proc_close and a boolean, which says nothing about directory
+# permissions and sends the reader looking at WP-CLI instead.
+#
+# Observed 2026-08-12 on the live host, running this script from ~ as the ubuntu
+# user. The container harness never caught it because Docker's default working
+# directory is /, which every user can traverse.
+#
+# / is chosen rather than $REPO_DIR because a checkout can itself sit somewhere
+# unreadable, which would reintroduce exactly this bug.
+cd /
+
 log()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
 # Is this a real host with an init system, or a container?

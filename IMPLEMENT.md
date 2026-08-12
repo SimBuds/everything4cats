@@ -5,10 +5,9 @@
 - Last completed phase: Phase 7. The site is live at https://everything4cats.ca
 - Next: Phase 11, blocking `xmlrpc.php`. It is the only remaining phase that is
   neither blocked on a decision nor on the theme.
-- Phase status roll-call: 1 complete, 2 complete, 3 complete, 4 complete,
-  5 complete, 6 complete, 7 complete, 8 planned (blocked on the theme),
-  9 complete, 10 complete, 11 complete, 12 planned (blocked on a decision),
-  13 planned (blocked on a decision), 14 named only.
+- Phase status roll-call: 1 to 11 complete, including 8 and 8b. 12 planned
+  (blocked on the mail relay decision), 13 planned (blocked on the UpdraftPlus
+  destination), 14 named only, and parts of it are unblocked.
 - Phases 9 to 14 were added 2026-08-11. They are items 5 to 8 of the
   provisioner's exit list plus the pre-launch work this session surfaced.
   Renumbered the same day when Phase 10 was inserted at Casey's request, so
@@ -345,7 +344,11 @@ are execution-assist and each stays open across turns.
   of the `Remaining` block and become their own phases once the site is live.
 
 ### Phase 8: The base theme is integrated.
-- Status: in progress, 2026-08-12. The theme landed, so this is unblocked.
+- Status: complete, 2026-08-12. Deployed to the live host and verified over
+  HTTPS: home 200, `/reviews/` 200, search 200, font 200, unknown path 404.
+  Recorded as README build log Step 7. All four blockers cleared, all nine
+  screens built in Phase 8b.
+- Status history: in progress, 2026-08-12. The theme landed, so this is unblocked.
   Cleanup done and audited. **Not closeable yet**: four blockers below.
 - Cleanup done 2026-08-12, at Casey's request:
   - `design/` created and split into `tool/` (generated design-tool artefacts,
