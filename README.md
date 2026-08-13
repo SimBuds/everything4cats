@@ -818,3 +818,79 @@ placement.
 **Still open:** production access. AWS responded to the initial request asking
 for detail on sending frequency, list maintenance and bounce handling. Until it
 is granted, SES delivers only to verified identities.
+
+#### Step 9 — backups, restored and proven ✅
+
+**Goal:** get the irreplaceable half of this site off the instance, and prove it
+comes back.
+
+**Why it matters:** until content existed, losing the server cost nothing.
+`provision.sh` rebuilds the machine, `plugins.txt` reinstalls the plugin
+baseline, and the theme and both custom plugins come from git. The first review
+written ends that, because writing is the one thing here that is not
+reproducible from the repository.
+
+**Scope, which is also the cost decision.** UpdraftPlus to Google Drive, backing
+up **the database and `wp-content/uploads` only**. Plugins, themes and core are
+all excluded because all three are reproducible with one command. That keeps the
+backup inside Drive's free tier for a long time and keeps restores fast.
+
+Database daily retaining 14, files weekly retaining 4. The two differ because
+writing changes every working day while photographs change rarely, and the
+realistic disaster is not a dead disk but a bad edit noticed a week later.
+
+**Lightsail automatic snapshots were deliberately not enabled.** They bill per
+GB-month and retain seven dailies, to duplicate a machine that rebuilds from
+scratch. Skipping them costs recovery time rather than data. This is a
+deliberate departure from the usual "back up at both layers" rule, and it holds
+here only because the infrastructure is code.
+
+**Commands:** the restore, which is the part worth writing down. Performed
+against the local Docker container, never the live site, using the copy
+downloaded from Google Drive rather than the one UpdraftPlus leaves on the
+server.
+
+```bash
+# IN CONTAINER
+wp db clean --yes
+gzip -dc backup_*-db.gz > /tmp/db.sql
+wp db import /tmp/db.sql
+wp search-replace "everything4cats.ca" "e4c.test" --all-tables --skip-columns=guid
+python3 -c "import zipfile,glob; zipfile.ZipFile(glob.glob('backup_*-uploads.zip')[0]).extractall('/var/www/everything4cats/wp-content/')"
+chown -R www-data:www-data /var/www/everything4cats/wp-content/uploads
+```
+
+**Verify:** the restored container served the site at `200` with 41,778 bytes
+and **zero** occurrences of fatal, parse error, warning or notice in the body.
+29 tables, 5,101 options, users and terms all present, 15 upload files
+extracted.
+
+**Q&A:**
+
+- *Why restore from Google Drive rather than the copy on the server?*
+  UpdraftPlus keeps a local staging copy in `wp-content/updraft/`. Restoring
+  from that proves nothing, because in a real disaster the server is gone and
+  the remote copy is all that exists. Using the Drive copy tests the retrieval
+  path as well as the archive.
+- *Why restore into the container rather than the live site?* Restoring over
+  production to "test" a backup risks the thing being protected. The container
+  is the same stack, is disposable, and rebuilds with one command, so a broken
+  restore costs nothing.
+- *The first restore showed no published posts and no logo. Was the backup
+  broken?* No. The backup predated the branding being assigned, and "Hello
+  world!" had already been moved to the trash. The restore was faithful to the
+  moment it was taken, which is the correct behaviour. A second backup taken
+  after the branding was set contains all eight Site Icon crops, confirming it.
+- *What broke during the restore?* `unzip` is not installed on a bare Ubuntu
+  host, so the extraction step failed. Python is always present, and the
+  one-liner above uses it. Worth knowing before a real recovery, because that is
+  the worst moment to discover a missing utility.
+- *Do not leave a database backup in the repository root.* `.gitignore` covers
+  `*.sql`, `*.sql.gz`, `*.tar.gz` and `*.zip`, and UpdraftPlus names its
+  database export `-db.gz`, which matches none of them. During this step the
+  uploads archive was correctly ignored while the database dump sat untracked
+  and one `git add .` away from a public repository. A dump carries the
+  `wp_users` table with password hashes and `wp_options` with plugin
+  credentials. The authoritative copies live in Google Drive, so keep local ones
+  outside the repository, for example under `~/backups/`, rather than relying on
+  a pattern match to catch them.

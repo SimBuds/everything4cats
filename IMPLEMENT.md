@@ -5,9 +5,11 @@
 - Last completed phase: Phase 7. The site is live at https://everything4cats.ca
 - Next: Phase 11, blocking `xmlrpc.php`. It is the only remaining phase that is
   neither blocked on a decision nor on the theme.
-- Phase status roll-call: 1 to 11 complete, including 8 and 8b. 12 planned
-  (blocked on the mail relay decision), 13 planned (blocked on the UpdraftPlus
-  destination), 14 named only, and parts of it are unblocked.
+- Phase status roll-call: **1 to 13 complete**, including 8 and 8b. Phase 12 is
+  complete technically and still sandboxed pending AWS production access. Phase
+  14 is named only, and several of its members are unblocked and partly done.
+- What is left is no longer infrastructure. It is ACF Pro, content, and the
+  launch flip.
 - Phases 9 to 14 were added 2026-08-11. They are items 5 to 8 of the
   provisioner's exit list plus the pre-launch work this session surfaced.
   Renumbered the same day when Phase 10 was inserted at Casey's request, so
@@ -750,7 +752,24 @@ are execution-assist and each stays open across turns.
   Namecheap's existing email forwarding is unaffected.
 
 ### Phase 13 (execution-assist): The site is backed up and a restore is proven.
-- Status: planned 2026-08-12. **Tool decided: UpdraftPlus**, already installed.
+- Status: complete, 2026-08-13. UpdraftPlus to Google Drive, database daily
+  retaining 14 and files weekly retaining 4, scoped to database and uploads
+  only. **Restore proven**, not merely configured: the Drive copy was restored
+  into the Docker container and served the site at 200 with zero PHP errors,
+  29 tables and 5,101 options intact. Recorded as README build log Step 9.
+- Two findings from actually doing the restore rather than reading about it:
+  `unzip` is absent on a bare Ubuntu host, so the extraction step needs Python,
+  which is always present. And `.gitignore` does not catch UpdraftPlus's
+  `-db.gz` database export, which sat untracked and committable in the repo root
+  while the uploads `.zip` beside it was correctly ignored. Local copies belong
+  outside the repository.
+- The first restore appeared to lose content and branding. It had not: the
+  backup predated the logo and Site Icon being assigned, and the fixtures were
+  already in the trash. A second backup taken afterwards contains all eight Site
+  Icon crops. Faithfulness to the moment of capture is the correct behaviour and
+  was misread as failure until the timestamps were compared.
+- This satisfies the gate the auto-update decision was waiting on.
+- Status history: planned 2026-08-12. **Tool decided: UpdraftPlus**, already installed.
   Remote destination still to confirm.
 - **Scope narrowed deliberately, and this is the cost decision.** A default
   WordPress backup copies core, plugins, themes, uploads and the database. Here

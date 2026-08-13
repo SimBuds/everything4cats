@@ -18,10 +18,19 @@ wp-content/plugins/
 __pycache__/
 
 # Database and backup artefacts.
+#
+# A WordPress database dump carries the wp_users table with password hashes and
+# wp_options with plugin credentials, so none of these may ever reach a public
+# repository. Extended 2026-08-13: UpdraftPlus names its database export
+# "-db.gz", which matched none of the patterns below and sat untracked and
+# committable in the repo root. The uploads archive was caught by *.zip and the
+# database one was not, which is the kind of near-miss worth a broader net.
 *.sql
 *.sql.gz
 *.tar.gz
 *.zip
+*.gz
+backup_*
 
 # Local tooling.
 node_modules/
