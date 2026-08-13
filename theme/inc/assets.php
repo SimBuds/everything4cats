@@ -40,9 +40,32 @@ add_action( 'wp_enqueue_scripts', 'e4c_enqueue_assets' );
 /**
  * Loads the single stylesheet. Fonts are declared in theme.json so the editor
  * and the front end resolve one source of truth, with font-display: swap.
+ *
+ * Versioned by the file's own modification time rather than by
+ * E4C_THEME_VERSION.
+ *
+ * The constant is bumped by hand, which means it is bumped when someone
+ * remembers. Between 2026-08-12's theme deploy and this fix it stayed at 0.1.0
+ * across every stylesheet change, so returning browsers kept serving a cached
+ * copy while the server had a newer one. The symptom was a footer logo
+ * rendering at full container width: the new .e4c-footer__logo rule existed on
+ * disk and had never reached a browser, leaving the image with only the global
+ * `img { max-width: 100% }`.
+ *
+ * That failure mode is nasty precisely because the fix looks wrong rather than
+ * undelivered. filemtime() changes on every edit, so the cache key cannot drift
+ * from the file again. plugins/e4c-compliance already versions disclosure.css
+ * this way, so this matches an existing pattern rather than inventing one.
  */
 function e4c_enqueue_assets(): void {
-	wp_enqueue_style( 'e4c-style', get_stylesheet_uri(), array(), E4C_THEME_VERSION );
+	$path = get_theme_file_path( 'style.css' );
+
+	wp_enqueue_style(
+		'e4c-style',
+		get_stylesheet_uri(),
+		array(),
+		file_exists( $path ) ? (string) filemtime( $path ) : E4C_THEME_VERSION
+	);
 }
 
 add_action( 'after_setup_theme', 'e4c_editor_styles' );
