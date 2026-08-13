@@ -97,6 +97,28 @@ function e4c_brand_logo( array $attrs = array() ): string {
 		array(
 			'class' => 'custom-logo',
 			'alt'   => get_bloginfo( 'name' ),
+
+			/*
+			 * WordPress defaults an uploaded logo's sizes attribute to
+			 * "(max-width: 2137px) 100vw, 2137px", which claims the image fills
+			 * the viewport. It never does: style.css caps it at 42px tall in the
+			 * header and 44px in the footer, and at the source ratio of roughly
+			 * 4.3:1 that is about 190px wide at most.
+			 *
+			 * Left at the default, a 1440px screen selects the 1536w file,
+			 * roughly 193 KB, to paint 190px. That is barely better than the
+			 * unresized original the upload was meant to replace, which made the
+			 * whole srcset ladder decorative.
+			 *
+			 * Browsers multiply this by device pixel ratio when choosing, so
+			 * 200px asks for 200w on a standard display and 400w on a 2x one,
+			 * landing on the 300w and 768w files respectively.
+			 *
+			 * Revisit if the logo's aspect ratio changes substantially, since
+			 * this width is derived from the height cap in style.css and that
+			 * ratio.
+			 */
+			'sizes' => '200px',
 		),
 		$attrs
 	);
