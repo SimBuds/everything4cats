@@ -200,6 +200,14 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-footer a:hover { text-decoration: underline; }
 .e4c-footer__legal { margin-top: var(--wp--preset--spacing--40); color: var(--e4c-ink-meta); font-size: var(--wp--preset--font-size--caption); }
 
+/* The footer brand heading holds the logo image. It has to opt out of the
+   uppercase letter-spaced treatment the other footer headings get, because
+   those rules are typographic and an img inherits none of them usefully while
+   the margin and colour still apply. */
+.e4c-footer__brand { margin: 0 0 14px; text-transform: none; letter-spacing: normal; }
+.e4c-footer__logo { width: auto; height: 44px; display: block; }
+.e4c-footer__statement { margin: 0; color: var(--e4c-ink-muted); max-width: 34ch; }
+
 .e4c-pagination { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--wp--preset--spacing--40); }
 .e4c-pagination .page-numbers { padding: 9px 14px; border-radius: var(--wp--custom--radius-pill); text-decoration: none; background: var(--e4c-surface); }
 .e4c-pagination .page-numbers.current { background: var(--e4c-brand); color: var(--e4c-on-brand); }

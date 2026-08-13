@@ -74,6 +74,64 @@ function e4c_button( string $url, string $label, string $variant = 'primary', ar
 }
 
 /**
+ * The brand logo markup, in three tiers.
+ *
+ * 1. A logo uploaded through Customizer > Site Identity. Preferred, because
+ *    WordPress owns the srcset and a phone then downloads a resized copy
+ *    rather than the full-width original.
+ * 2. The logo bundled at theme/assets/. Same reasoning as front-page.php
+ *    falling back to the hero pattern: a fresh install or a rebuilt host
+ *    should carry the brand immediately rather than showing plain text until
+ *    someone remembers an admin step.
+ * 3. An empty string, leaving the caller to render the site name as text.
+ *
+ * Returns the image only, never a link, because the header wraps it in one and
+ * the footer deliberately does not. Two callers with different needs is what
+ * makes this a function with arguments rather than two copies of the tiering.
+ *
+ * @param array<string,string> $attrs Extra img attributes, escaped on output.
+ * @return string Image markup, or '' when no logo is available at all.
+ */
+function e4c_brand_logo( array $attrs = array() ): string {
+	$attrs = array_merge(
+		array(
+			'class' => 'custom-logo',
+			'alt'   => get_bloginfo( 'name' ),
+		),
+		$attrs
+	);
+
+	$logo_id = (int) get_theme_mod( 'custom_logo' );
+
+	if ( $logo_id ) {
+		return (string) wp_get_attachment_image( $logo_id, 'full', false, $attrs );
+	}
+
+	$rel = 'assets/everything4cats-logo.png';
+
+	if ( ! file_exists( get_theme_file_path( $rel ) ) ) {
+		return '';
+	}
+
+	/*
+	 * Width and height are the bundled file's real dimensions. Without them the
+	 * surrounding layout reflows on first paint, which is a layout-shift cost
+	 * paid on every uncached visit. The uploaded path above gets these from
+	 * WordPress automatically, which is one more reason to prefer it.
+	 */
+	$markup = sprintf(
+		'<img src="%s" width="2137" height="498"',
+		esc_url( get_theme_file_uri( $rel ) )
+	);
+
+	foreach ( $attrs as $name => $value ) {
+		$markup .= sprintf( ' %s="%s"', esc_attr( $name ), esc_attr( $value ) );
+	}
+
+	return $markup . '>';
+}
+
+/**
  * The site's standing method statement for the top bar. This is not the paid
  * link disclosure: plugins/e4c-compliance owns that, and duplicating it here
  * would put two differently worded notices on the same page.
