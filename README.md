@@ -733,3 +733,88 @@ than a server default.
 - *Why does the closing list still say "not yet TLS" and tell me to point DNS?*
   The script prints its full exit list on every run and has no memory of which
   steps are done. Items 1 to 4 were completed in Steps 1, 2 and 4. Cosmetic.
+
+#### Step 8 — transactional mail through Amazon SES ✅
+
+**Goal:** end the silent-failure state where FluentSMTP was active with no relay,
+so WordPress reported every message as sent while none left the host.
+
+**Why it matters:** AWS blocks outbound port 25, so PHP `mail()` never delivered.
+Nothing surfaced that, because WordPress hands the message off and gets no error
+back. A password reset was therefore unrecoverable except over SSH.
+
+Amazon SES was chosen over Brevo on cost: at well under 50 messages a month it is
+roughly $0.10 per thousand and draws on credits already held. The price paid
+instead is setup, since SES starts sandboxed where Brevo has no gate.
+
+**DNS, four records at the registrar, not six.** Three DKIM CNAMEs and one
+`_dmarc` TXT. The apex SPF record was **not** touched, and that is the part worth
+remembering:
+
+- A custom MAIL FROM subdomain was configured in SES, then abandoned, because
+  Namecheap offers no `MX Record` type at all while its Email Forwarding service
+  is enabled. SES verifies a MAIL FROM domain only when both its MX and TXT
+  records exist, so without the MX the TXT was inert.
+- Working around that would have meant switching Mail Settings to Custom MX,
+  which disables the forwarding service rather than merely its records, and the
+  apex SPF record is locked by that same service.
+- It cost nothing. DMARC passes when **either** SPF or DKIM aligns. Easy DKIM
+  signs as `everything4cats.ca` and aligns, SPF authenticates `amazonses.com`
+  and does not. One is enough, and DKIM is the stronger signal anyway because it
+  survives forwarding where SPF does not.
+
+**Commands:** none on the server. This is console and DNS work, plus plugin
+configuration. Verified externally over DNS-over-HTTPS:
+
+```bash
+# ON HOST
+curl -s -H 'accept: application/dns-json' \
+  "https://cloudflare-dns.com/dns-query?name=_dmarc.everything4cats.ca&type=TXT"
+```
+
+**Verify:** a real password reset was triggered from `wp-login.php` rather than
+using the plugin's test button, and the received message's
+`Authentication-Results` header read:
+
+```
+spf=pass      smtp.mailfrom=ca-central-1.amazonses.com
+dkim=pass     header.d=everything4cats.ca
+dkim=pass     header.d=amazonses.com
+dmarc=pass    action=none header.from=everything4cats.ca
+compauth=pass reason=100
+```
+
+Delivered to Junk, which is new-domain reputation rather than a fault: the
+authentication is perfect, and only time and consistent sending change
+placement.
+
+**Q&A:**
+
+- *Why not add `include:amazonses.com` to the existing SPF record?* Two reasons.
+  It is unnecessary, because SPF authenticates the envelope sender and SES owns
+  that. And it is impossible: Namecheap's panel shows the apex SPF record as
+  locked, managed by the Email Forwarding service. Publishing a second SPF
+  record instead is a permanent failure rather than a merge, since receivers
+  treat two records as a permerror and stop evaluating.
+- *Why did the IAM user fail with `AccessDenied` on `ses:ListIdentities`?* The
+  policy granted only `SendRawEmail` and `SendEmail`. FluentSMTP also reads
+  `ListIdentities`, `GetSendQuota` and `GetSendStatistics` to populate its
+  dashboard. Those three are read-only, cannot send or configure anything, and
+  do not support resource-level scoping, so `Resource: "*"` is required for
+  them. The user still cannot verify an identity, delete one, or act outside
+  SES, which is the property that matters if the keys leak.
+- *Why a scoped IAM user rather than an instance role?* Lightsail does not
+  support IAM instance profiles the way EC2 does, so there is no way to avoid a
+  long-lived key here. That is precisely why the policy is narrow: on EC2 the
+  role would limit the blast radius, and on Lightsail the policy is the only
+  thing doing that job.
+- *Why is the return-path option in FluentSMTP switched off?* It duplicates what
+  SES already does, since feedback forwarding routes bounces to the From
+  address. And if it influenced the envelope sender rather than only a header,
+  it would move the SPF check onto `everything4cats.ca`, whose apex record
+  authorises the registrar's forwarders and not SES, turning a pass into a
+  softfail.
+
+**Still open:** production access. AWS responded to the initial request asking
+for detail on sending frequency, list maintenance and bounce handling. Until it
+is granted, SES delivers only to verified identities.

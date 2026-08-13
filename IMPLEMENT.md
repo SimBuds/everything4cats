@@ -656,9 +656,120 @@ are execution-assist and each stays open across turns.
   already handles correctly through `the_archive_title()`. Not in Casey's list
   of seven and not worth a template that would duplicate `archive-review.php`.
 
-### Phase 12 (execution-assist): WordPress delivers mail through an authenticated relay.
-- Status: planned, not yet detailed. Renumbered from Phase 11 on 2026-08-11.
-  **Blocked on a decision**: which relay.
+### Phase 12 (execution-assist): WordPress delivers mail through Amazon SES.
+- Status: technically complete, 2026-08-12. A real WordPress password reset was
+  delivered and authenticated end to end. **Still sandboxed**: AWS asked for
+  more detail on the production access request, so delivery is limited to
+  verified identities until that is granted.
+- Evidence, from the received message's `Authentication-Results`:
+  `dkim=pass header.d=everything4cats.ca`, `dkim=pass header.d=amazonses.com`,
+  `spf=pass smtp.mailfrom=ca-central-1.amazonses.com`, `dmarc=pass action=none
+  header.from=everything4cats.ca`, `compauth=pass reason=100`.
+- **The DMARC prediction held.** Dropping the custom MAIL FROM meant SPF would
+  authenticate `amazonses.com` and not align. DMARC passed anyway on DKIM
+  alignment alone, which is what the decision was reasoned on. The measurable
+  cost of losing the MX record was zero.
+- Delivered to the Junk folder with that authentication result, which is
+  new-domain reputation rather than a fault. Nothing to fix, only time and
+  consistent sending.
+- Status history: planned in full 2026-08-12. **Relay decided: Amazon SES**, chosen over
+  Brevo on cost. At this site's volume, well under 50 messages a month, SES is
+  roughly $0.10 per thousand and draws on the existing $100 of credits, so the
+  running cost is pennies. The price paid instead is setup: SES starts
+  sandboxed and production access is a request with a wait, where Brevo has no
+  gate.
+- Environment: `# IN AWS CONSOLE`, `# IN REGISTRAR DNS`, `# IN WP-ADMIN`. Casey
+  runs all of it. No agent touches the AWS account, per tier 0.
+- Files to touch: none in the repo during setup. `README.md` gains a build log
+  entry at the end. **No credential of any kind enters the repository**: SMTP
+  credentials and IAM keys live only in the SES console and in FluentSMTP's
+  settings, which are database rows.
+- Reuse audit: `fluent-smtp` is already installed and active from
+  `scripts/plugins.txt` and has native Amazon SES support, so nothing new is
+  installed.
+- **The apex SPF record is not touched at all. Corrected 2026-08-12.** The
+  earlier plan said the existing
+  `v=spf1 include:spf.efwd.registrar-servers.com ~all` would gain
+  `include:amazonses.com`. That was written before the custom MAIL FROM domain
+  was configured, and the MAIL FROM decision makes it unnecessary: SPF
+  authenticates the envelope sender, so receivers evaluate
+  `mail.everything4cats.ca`, whose own TXT record SES supplies. The apex record
+  is never consulted for SES mail, and DMARC still aligns because the default
+  alignment mode is relaxed and `mail.` is a subdomain of the From domain.
+- **That correction matters practically, not just theoretically.** Namecheap's
+  panel shows the apex SPF record under Mail Settings, marked locked, because
+  the Email Forwarding service manages it. It could not have been freely edited,
+  and working around the lock would have meant either disabling forwarding or
+  publishing a second SPF record, which is a permanent failure rather than a
+  merge. The MAIL FROM subdomain sidesteps the whole problem, which is a second
+  benefit of that decision beyond the DMARC alignment it was chosen for.
+- Namecheap's Mail Settings dropdown stays on Email Forwarding. Changing it to
+  Custom MX would break inbound mail for the domain silently.
+- The second trap: while SES is sandboxed it will only deliver to verified
+  addresses. A test that "works" in the sandbox proves nothing about delivery
+  to a stranger, so the real proof waits for production access.
+- Scenarios (written from the requirement, before any step):
+  - The domain is verified in SES and all three Easy DKIM CNAMEs resolve.
+  - The single SPF record contains both the registrar forwarder and
+    `include:amazonses.com`.
+  - Production access is granted, so delivery is not limited to verified
+    addresses.
+  - A real WordPress password reset arrives, rather than FluentSMTP's own test
+    button reporting success.
+  - The message passes SPF and DKIM at the receiving end, checked in the
+    received headers rather than assumed from arrival.
+- Verification (three bullets or fewer):
+  - A password reset triggered from `wp-login.php` arrives at an address that
+    was never verified in SES, which is only possible once out of the sandbox.
+  - The received message's headers show `spf=pass` and `dkim=pass` for
+    `everything4cats.ca`.
+  - The SPF record resolves as exactly one TXT record containing both includes,
+    checked from an external resolver rather than from the registrar panel.
+- **Custom MAIL FROM: dropped, 2026-08-12. Final.** It was deferred, then
+  included when the SES creation screen made it free to add, then abandoned when
+  Namecheap turned out not to offer an `MX Record` type at all while Email
+  Forwarding is enabled. SES verifies a MAIL FROM domain only when both its MX
+  and TXT records exist, so without the MX the TXT is inert and both were
+  skipped.
+- The workaround was rejected rather than untried: switching Namecheap's Mail
+  Settings to Custom MX disables the forwarding service itself, not merely its
+  records, and the apex SPF record is locked by that same service. That trades
+  working inbound mail for SPF alignment that is not needed.
+- **What it costs: close to nothing.** DMARC passes when either SPF or DKIM
+  aligns. Easy DKIM signs as `everything4cats.ca`, so DKIM aligns and DMARC
+  passes on that alone. SPF authenticates `amazonses.com`, which does not align
+  and does not need to. DKIM is the stronger signal regardless, since it
+  survives forwarding where SPF does not.
+- Four DNS records total, not six: three DKIM CNAMEs and one `_dmarc` TXT.
+- **MX failure behaviour set to "use default MAIL FROM domain", not "reject
+  message".** Reject turns a broken MX record into total silent mail loss,
+  which is the exact failure this phase exists to end. Use-default degrades to
+  `amazonses.com`, costing SPF alignment rather than every password reset.
+  DMARC still passes on DKIM alone, since Easy DKIM signs as the domain.
+- The MAIL FROM subdomain carries its own MX, separate from the apex, so
+  Namecheap's existing email forwarding is unaffected.
+
+### Phase 13 (execution-assist): The site is backed up and a restore is proven.
+- Status: planned 2026-08-12. **Tool decided: UpdraftPlus**, already installed.
+  Remote destination still to confirm.
+- **Scope narrowed deliberately, and this is the cost decision.** A default
+  WordPress backup copies core, plugins, themes, uploads and the database. Here
+  core comes from `wp core download`, the plugin baseline from `plugins.txt`,
+  and the theme and both custom plugins from git. None of that is unique, so
+  none of it is backed up. What is irreplaceable is the **database and
+  `wp-content/uploads`**: the writing and the photography. That keeps the
+  backup inside a free tier for a long time.
+- **Lightsail automatic snapshots are deliberately not enabled.** They bill per
+  GB-month and retain seven dailies, to duplicate a machine that `provision.sh`
+  rebuilds from scratch. Skipping them costs recovery time rather than data:
+  rebuild, re-issue the certificate, reinstall ACF Pro, restore from
+  UpdraftPlus. One manual snapshot is taken once the host is fully configured,
+  as a cheap fast-restore point. Revisit when the site earns anything.
+  This revises the earlier "both layers, always" advice, which is the right
+  general rule and is weaker here precisely because the infrastructure is code.
+- Verification: a restore is performed, not just a backup taken. The check is
+  that a restored database and uploads produce a working site, because a backup
+  nobody has restored is not a backup.
 - One-line goal: end the silent-failure state where FluentSMTP is active with no
   relay, so WordPress reports every message as sent while none leave the host.
 - Carries a known dependency: the existing SPF record
@@ -675,8 +786,22 @@ are execution-assist and each stays open across turns.
 - Gates the auto-update decision recorded above.
 
 ### Phase 14: Pre-launch hygiene and the launch flip.
-- Status: named only. Renumbered from Phase 13 on 2026-08-11. Not planned, and
-  deliberately not decomposed yet.
+- Status: partly done. Renumbered from Phase 13 on 2026-08-11. Still not
+  decomposed as a whole.
+- **Done 2026-08-12: the byline fix.** `display_name` and `user_nicename` were
+  both `casey`, identical to the login, and `/wp-json/wp/v2/users` publishes
+  both without authentication. Confirmed exposed on the live site while 48
+  failed login attempts were recorded in 24 hours, so a bot could read a valid
+  username and needed only the password. Now `SimBuds` and `simbuds`, verified
+  two ways: the REST endpoint returns the new values, and `/?author=1` redirects
+  to `/author/simbuds/` rather than `/author/casey/`.
+- Why that closed it without blocking the endpoint: enumeration still works, but
+  what it returns is a byline rather than a credential. Blocking
+  `/wp-json/wp/v2/users` outright would break the block editor's author selector
+  and buy nothing once the exposed value is not a login.
+- Timing mattered: `user_nicename` is the author-archive URL, so changing it
+  before anything is indexed costs nothing, and changing it afterwards moves a
+  URL Google knows about.
 - Known members, from this session and from `PLAN.md`: the `display_name` and
   `user_nicename` fix, deleting the fixtures, the Complianz wizard, the Rank
   Math wizard with its schema module off, connecting GA4 behind consent, then

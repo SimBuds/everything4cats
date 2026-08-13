@@ -33,3 +33,6 @@ vendor/
 # Casey's own development and learning material, not public-facing repo docs.
 QUESTIONS.md
 figma/
+# Credentials must never enter this repo.
+*accessKeys*.csv
+*.pem
