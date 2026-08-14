@@ -1,11 +1,17 @@
 <?php
 /**
- * ACF field groups, registered in PHP so they are version-controlled and
- * deploy with the code rather than living in the database.
+ * Field groups, registered in PHP so they are version-controlled and deploy
+ * with the code rather than living in the database.
+ *
+ * Written against ACF's API and provided by Secure Custom Fields, the
+ * WordPress.org fork of ACF, which is installed from scripts/plugins.txt. The
+ * fork keeps ACF's function names, so nothing here is fork-specific and this
+ * file would work unchanged against ACF Pro. See plugins.txt for why the
+ * dependency moved off the commercial plugin on 2026-08-13.
  *
  * Field names match what the theme reads through e4c_field(): the theme falls
- * back to raw post meta of the same name when ACF is inactive, so keeping
- * these names stable is a contract between the two.
+ * back to raw post meta of the same name when the plugin is inactive, so
+ * keeping these names stable is a contract between the two.
  */
 
 defined( 'ABSPATH' ) || exit;

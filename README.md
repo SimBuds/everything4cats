@@ -148,20 +148,30 @@ The theme is deployed by **symlink** from the checkout, so a pull is the whole
 deploy and there is no copy step to forget. Every directory under `plugins/` is
 deployed the same way and activated.
 
-### ACF Pro is a manual step
+### The custom fields plugin is no longer a manual step
 
-`plugins/e4c-content` registers its field groups through Advanced Custom Fields
-Pro, which is commercial and not on wordpress.org, so `scripts/plugins.txt`
-cannot install it and the provisioner cannot either. Install and licence it by
-hand in wp-admin.
+`plugins/e4c-content` registers its field groups through ACF's API, and
+**Secure Custom Fields** provides it. SCF is WordPress.org's fork of ACF, free,
+on the plugin directory, and therefore a normal line in `scripts/plugins.txt`.
+The provisioner installs and activates it like everything else.
 
-Nothing breaks without it, which is the reason this is easy to miss. The post
-types still register, reviews stay published, `e4c-content` prints an admin
-notice, and the theme's `e4c_field()` falls back to raw post meta of the same
-name. What is missing is the editing UI: verdict, pros, cons and the spec table
-have no fields in the editor until ACF Pro is active. That fallback is proven
-rather than assumed, because the container has no ACF and renders a review with
-every field populated.
+This section previously read "ACF Pro is a manual step", because four of the
+eight fields are `repeater` and that was a Pro-only type. Changed 2026-08-13
+after the published SCF package was inspected and found to carry the Pro field
+set. `fields.php` is written against ACF's API rather than anything
+fork-specific, so it works unchanged either way.
+
+Nothing breaks if the plugin is ever absent, which is the reason its absence is
+easy to miss. The post types still register, reviews stay published,
+`e4c-content` prints an admin notice, and `e4c_field()` falls back to raw post
+meta of the same name. What is missing is the editing UI.
+
+**One caveat on that fallback**, measured rather than assumed: it does not
+reconstruct repeaters. ACF stores a repeater as a row count in the parent key
+plus one entry per index, so a post whose fields were written by the plugin and
+then read with the plugin inactive renders the count where the rows should be.
+Tracked as a follow-up, and it needs the plugin to be deactivated by hand to
+occur at all.
 
 ### Design source lives outside this repository
 
@@ -893,4 +903,117 @@ extracted.
   `wp_users` table with password hashes and `wp_options` with plugin
   credentials. The authoritative copies live in Google Drive, so keep local ones
   outside the repository, for example under `~/backups/`, rather than relying on
-  a pattern match to catch them.
+  a pattern match to catch them. `.gitignore` has since been widened to `*.gz`
+  and `backup_*`, which closes this particular hole, but the habit is the real
+  fix: the next tool will name its output something else.
+
+#### Step 10 — auto-updates on ✅
+
+**Goal:** stop carrying the update backlog by hand, now that it is safe to.
+
+**Why it was off until now.** Unattended updates and no backups is the one
+combination with no recovery path. A plugin update that breaks the site at 3am
+is an inconvenience when a restore exists and a rebuild-from-nothing when it
+does not. So the decision was recorded early and deliberately gated on Step 9
+rather than on a date.
+
+**Why it goes on rather than staying off.** Outdated plugins are the actual
+compromise route for a WordPress host, not weak passwords and not core itself.
+Every week a known vulnerability sits unpatched is a week the site is findable
+by an automated scanner that reads plugin version numbers off the page. Manual
+updating loses to that, because it depends on someone remembering.
+
+**Commands:**
+
+```bash
+# ON THE SERVER
+wp plugin auto-updates enable --all
+wp theme auto-updates enable --all
+```
+
+**Verify:** `wp plugin list --field=name --status=active` alongside
+`wp plugin auto-updates status --all`, confirming no active plugin is left off.
+
+**Q&A:**
+
+- *Does this cover WordPress core?* No. Core auto-updates for minor and security
+  releases are on by default and are a separate setting from these two. Major
+  version updates stay manual, which is correct: minor releases are security
+  fixes and are safe, major ones change behaviour.
+- *What is the residual risk?* An update lands, breaks a page, and nobody
+  notices until a visitor does. That is a monitoring gap rather than a backup
+  gap, and it is smaller than the risk of an unpatched plugin. The backup exists
+  either way.
+
+#### Step 11 — Secure Custom Fields, and the plugin baseline becomes complete ✅
+
+**Goal:** give reviews and roundups a real editing UI without taking on a
+commercial dependency.
+
+**The problem this replaced.** `plugins/e4c-content` registers its field groups
+through ACF's API, and four of the eight fields are `repeater`, which was an
+ACF Pro field type. Pro is commercial and not on wordpress.org, so no slug in
+`scripts/plugins.txt` could install it. That file carried a block headed
+"CANNOT be in this list, and still required", and every rebuild needed a manual
+purchase-and-licence step in wp-admin.
+
+**What changed.** Secure Custom Fields, WordPress.org's October 2024 fork of
+ACF, free and on the plugin directory. It is now one line in `plugins.txt`.
+
+**Verified before switching, not assumed.** The published package was downloaded
+and inspected at version 6.9.5. Every field type `e4c-content` uses is present:
+
+| Type used | In SCF |
+| --- | --- |
+| `text`, `textarea`, `url`, `post_object` | yes |
+| `repeater` | yes |
+
+`flexible-content`, `clone` and `gallery` ship too, so the fork carries the Pro
+feature set rather than only the free half, and
+`acf_add_local_field_group`, `get_field`, `have_rows`, `acf_get_field_type` and
+`acf_get_local_field_groups` all still resolve under their ACF names.
+
+**Why it was a drop-in.** The templates never call `have_rows()` or
+`the_row()`. They call `e4c_field()` once and iterate the returned array. The
+entire coupling to ACF is two function names, both of which the fork keeps, so
+no PHP in the theme or in `e4c-content` changed behaviour.
+
+**The saving is not really the licence fee.** It is that `plugins.txt` describes
+the whole plugin baseline again. A rebuilt host needs no manual plugin step, the
+disaster-recovery sequence loses an item, and the container harness now
+exercises the real `get_field()` path instead of only the raw post-meta fallback.
+
+**Commands:** on the live host, after pulling.
+
+```bash
+# ON THE SERVER
+wp plugin install secure-custom-fields --activate
+wp plugin auto-updates enable --all
+```
+
+**Verify:** `bash scripts/test-provision/run.sh` exits 0 with `ALL CHECKS
+PASSED`, 59 checks against the previous 56. Three are new: the field API is
+present, the `repeater` type resolves, and both `group_e4c_*` field groups
+register. A review created in the container with `update_field()` rendered at
+36,461 bytes with zero PHP errors and all six values present, including both
+repeater rows and the specs table.
+
+**Q&A:**
+
+- *How do you know the ACF path ran rather than the fallback?* `wp post meta
+  list` shows underscore-paired keys, `_e4c_pros` holding `field_e4c_pros`,
+  which map a value back to its field definition. The raw post-meta fallback
+  never writes them.
+- *Is there any reason to still buy ACF Pro?* Not for this site. The one honest
+  argument is support and the pace of feature work, neither of which this
+  project consumes. `fields.php` is written against ACF's API rather than
+  anything fork-specific, so moving back would be a plugin swap and no code
+  change.
+- *What broke during verification?* Nothing in the change, but the check found a
+  pre-existing bug. With fields written by the plugin and the plugin then
+  deactivated, `e4c_field()` reads the repeater's parent key, gets the row
+  count, and `single-review.php` renders a bullet reading "2" where the pros
+  should be. It could not surface before now, because no container had ACF and
+  so no container had data in ACF's storage shape. Logged as Phase 18 rather
+  than fixed here, since it is a behaviour change to a shared helper and
+  deserves its own diff.

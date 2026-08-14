@@ -99,6 +99,23 @@ done
 # as a missing plugin.
 ck "review post type registered"  "1" "$(W post-type get review --field=name >/dev/null && echo 1 || echo 0)"
 ck "roundup post type registered" "1" "$(W post-type get roundup --field=name >/dev/null && echo 1 || echo 0)"
+# The field layer, added 2026-08-13 when secure-custom-fields replaced the
+# hand-installed ACF Pro. Until then no version of this harness could see the
+# fields at all: the container had no ACF, so every render it proved went
+# through the raw post-meta fallback in the theme's e4c_field() and the
+# get_field() path shipped untested.
+#
+# Three checks rather than one because they fail for different reasons. The API
+# can be present while the repeater field type is not, which is exactly the
+# difference between ACF free and ACF Pro and the single thing that made this
+# swap worth verifying. And both can be present while e4c-content's groups
+# never register, which is what a bad hook or a fatal in fields.php looks like.
+ck "custom fields API present" "1" \
+	"$(W eval 'echo function_exists("acf_add_local_field_group") ? 1 : 0;')"
+ck "repeater field type available" "1" \
+	"$(W eval 'echo function_exists("acf_get_field_type") && acf_get_field_type("repeater") ? 1 : 0;')"
+ck "e4c field groups registered" "2" \
+	"$(W eval 'echo function_exists("acf_get_local_field_groups") ? count( preg_grep( "/^group_e4c_/", wp_list_pluck( acf_get_local_field_groups(), "key" ) ) ) : 0;')"
 ck ".htaccess has rules"   "1"            "$(grep -qc 'RewriteEngine On' /var/www/everything4cats/.htaccess 2>/dev/null && echo 1 || echo 0)"
 ck "wp-config.php present" "1"            "$([ -f /var/www/everything4cats/wp-config.php ] && echo 1 || echo 0)"
 ck "wp-config.php owner"   "www-data"     "$(stat -c %U /var/www/everything4cats/wp-config.php)"

@@ -1,15 +1,19 @@
 # IMPLEMENT.md
 
 ## Current state
-- Active phase: none
-- Last completed phase: Phase 7. The site is live at https://everything4cats.ca
-- Next: Phase 11, blocking `xmlrpc.php`. It is the only remaining phase that is
-  neither blocked on a decision nor on the theme.
-- Phase status roll-call: **1 to 13 complete**, including 8 and 8b. Phase 12 is
-  complete technically and still sandboxed pending AWS production access. Phase
-  14 is named only, and several of its members are unblocked and partly done.
-- What is left is no longer infrastructure. It is ACF Pro, content, and the
-  launch flip.
+- Active phase: none. Phase 14 complete in the repo, awaiting Casey's commit and
+  the live deploy.
+- Last completed phase: Phase 14. The site is live at https://everything4cats.ca
+- Phase status roll-call: **1 to 14 complete**, including 8 and 8b. Phase 12 is
+  complete technically and still sandboxed pending AWS production access.
+  Phases 15 to 18 are planned. Phase 18 was opened by a bug found while
+  verifying Phase 14 and is not a launch blocker.
+- What is left is no longer infrastructure. It is ACF Pro, content, the two
+  plugin wizards, and the launch flip, in that order.
+- The Current-state block above was stale until 2026-08-13, still naming Phase 7
+  as last complete and Phase 11 as next while the roll-call beside it said 1 to
+  13. Corrected rather than explained away, and worth noting because a stale
+  header is the field most likely to be trusted without checking.
 - Phases 9 to 14 were added 2026-08-11. They are items 5 to 8 of the
   provisioner's exit list plus the pre-launch work this session surfaced.
   Renumbered the same day when Phase 10 was inserted at Casey's request, so
@@ -84,7 +88,9 @@ Added 2026-08-11.
 - **Plugin auto-updates stay off until backups exist and a restore is proven.**
   An unattended update that breaks an unbacked site is unrecoverable. Once
   Phase 12 lands, they go on, because plugin vulnerabilities are the actual
-  compromise route for a WordPress host.
+  compromise route for a WordPress host. **Resolved 2026-08-13:** Phase 13
+  proved a restore, so auto-updates are now enabled for all plugins and all
+  themes. The gate was real and it was cleared in the right order.
 - **Undecided, and blocking Phase 11:** which mail relay FluentSMTP uses. Brevo
   was recommended for having no approval gate, over Amazon SES (cheapest and
   already in the AWS account, but starts sandboxed) and Postmark (best
@@ -796,17 +802,105 @@ are execution-assist and each stays open across turns.
   `include:`, edited rather than duplicated, because two SPF records is a
   permanent failure rather than a merge.
 
-### Phase 13 (execution-assist): The site is backed up at both layers and a restore is proven.
-- Status: planned, not yet detailed. Renumbered from Phase 12 on 2026-08-11.
-  **Blocked on a decision**: the UpdraftPlus off-site destination.
-- One-line goal: a Lightsail snapshot restores the machine and UpdraftPlus
-  restores the site onto a different machine. They fail differently, so both are
-  needed, and a backup nobody has restored is not a backup.
-- Gates the auto-update decision recorded above.
+### Phase 14: Secure Custom Fields replaces the ACF Pro dependency, so the field baseline installs itself.
+- Status: **complete 2026-08-13.** Repo half done and verified in the container.
+  The live host still needs the deploy, which is a `git pull` plus
+  `wp plugin install secure-custom-fields --activate`, and is Casey's to run.
+- One-line goal: end the state where writing a review means hand-editing post
+  meta, and do it without taking on a commercial dependency.
+- **Decision, 2026-08-13: Secure Custom Fields, not ACF Pro.** Casey asked for
+  an option with no recurring cost. SCF is WordPress.org's October 2024 fork of
+  ACF, free, and on the plugin directory.
+- **Verified before planning, not assumed.** The published package was
+  downloaded and inspected at version 6.9.5. Every field type
+  `plugins/e4c-content/inc/fields.php` uses is present: `text`, `textarea`,
+  `url`, `post_object`, and critically `repeater`, which was the whole reason
+  the dependency was Pro rather than free. `flexible-content`, `clone`,
+  `gallery` and the options-page assets ship too, so the fork carries the Pro
+  feature set rather than only the free half. `acf_add_local_field_group`,
+  `get_field` and `have_rows` all still resolve under their ACF names.
+- **Why this is a drop-in and not a migration.** The templates never call
+  `have_rows()` or `the_row()`. They call `e4c_field()` once and iterate the
+  returned array, reading `$row['text']`, `$row['label']`, `$row['value']` and
+  `$row['review']`, tolerating scalar rows and normalising a post object against
+  a bare ID. The whole coupling to ACF is two function names, both of which the
+  fork keeps. No PHP in the theme or in `fields.php` changes behaviour.
+- **The real prize is not the money.** SCF is installable from wordpress.org,
+  so it goes in `scripts/plugins.txt` and the "CANNOT be in this list, and still
+  required" block disappears. That block existed only because ACF Pro is
+  commercial. Removing it restores `plugins.txt` to a complete description of
+  plugin state, deletes the manual step from disaster recovery, and makes the
+  container harness exercise the real `get_field()` path instead of only the
+  raw-meta fallback it has been proving against until now.
+- Files to touch (five, at the budget limit, noted rather than split because
+  they are one change): `scripts/plugins.txt`,
+  `plugins/e4c-content/inc/admin-notices.php`,
+  `plugins/e4c-content/inc/fields.php`, `scripts/test-provision/verify.sh`,
+  `README.md`.
+- Functions to add or change: `e4c_content_acf_notice()` only, for wording. Its
+  `function_exists( 'acf_add_local_field_group' )` guard is already correct for
+  SCF and does not change. No new function.
+- Reuse audit: searched `acf_add_local_field_group`, `get_field`, `e4c_field`,
+  `have_rows`. Both field groups already exist and register on
+  `acf/include_fields`. Searched for an existing install mechanism before adding
+  one: `scripts/plugins.txt` is already read by `provision.sh`, so SCF is a new
+  line in an existing file rather than any new machinery.
+- Simplest approach considered: install SCF by hand in wp-admin and change
+  nothing in the repo. Rejected because it recreates the exact manual step
+  `plugins.txt` exists to eliminate, and leaves the harness still blind to the
+  ACF path.
+- Scenarios: a bare host provisioned from scratch installs and activates SCF
+  with no human step; both groups register on the correct post types and nowhere
+  else; the admin notice stays silent while SCF is active and still fires with
+  accurate wording if it is ever absent; a review saved through the editor is
+  read by `get_field()` rather than by the fallback.
+- Verification (three bullets):
+  - `bash scripts/test-provision/run.sh` exits 0 with the new checks passing.
+  - In the container, `acf_get_field_type( 'repeater' )` resolves and both field
+    groups appear in `acf_get_local_field_groups()`.
+  - On the live host after deploy, editing a review shows all eight fields, the
+    ACF notice is gone, and `wp post meta list` on a saved review shows the
+    underscore-paired keys the fallback path never writes.
+- Deferred out of this phase: writing any content, which is Phase 15. No data
+  migration is needed, because the only posts carrying these fields are
+  fixtures that Phase 15 deletes.
+- Consequence for disaster recovery, revising what Phase 13 recorded: a rebuild
+  no longer needs a manual plugin reinstall before the UpdraftPlus restore is
+  useful. That note under Phase 13 is now stale and this phase corrects it.
 
-### Phase 14: Pre-launch hygiene and the launch flip.
-- Status: partly done. Renumbered from Phase 13 on 2026-08-11. Still not
-  decomposed as a whole.
+### Phase 15: The fixtures are gone and the site's own baseline content is published.
+- Status: planned 2026-08-13. Blocked on Phase 14.
+- One-line goal: the site says something true about cat products instead of
+  shipping WordPress sample data.
+- Not decomposed yet, deliberately. The shape depends on what Phase 14 makes
+  editable and on how long a first review actually takes to write. Decompose at
+  the start of the phase, not now.
+- Known members: delete the remaining fixtures, set the site Tagline, which is
+  still empty and which Rank Math will use, then the first reviews, at least one
+  roundup pointing at them, and the How We Test page the theme already has a
+  template for.
+- Ordering note: the roundup cannot be written before the reviews it points at,
+  because `e4c_picks` stores a post object rather than a copied title.
+
+### Phase 16 (execution-assist): Consent, analytics and SEO are configured.
+- Status: planned 2026-08-13. Blocked on Phase 15, because both wizards ask
+  questions about content that does not exist yet.
+- One-line goal: the three plugins that need a one-time interview get it, in the
+  order that avoids a duplicate-schema error.
+- Known members: the Complianz wizard, the Rank Math wizard **with its
+  rich-snippet module off**, and GA4 connected behind Complianz consent rather
+  than hardcoded into the theme.
+- The schema constraint is not a preference. `plugins/e4c-compliance` already
+  emits Article markup, and two Article blocks on one page is an error rather
+  than a tie-break. Recorded in `scripts/plugins.txt` under the deliberate
+  exclusions.
+
+### Phase 17 (execution-assist): Pre-launch hygiene and the launch flip.
+- Status: partly done. Renumbered from Phase 13 on 2026-08-11 and from Phase 14
+  on 2026-08-13, when its content and configuration members were split out into
+  Phases 14 to 16 because the phase failed the one-sentence test in an obvious
+  way: it carried a security fix, two plugin wizards, an analytics integration
+  and the launch itself under one heading.
 - **Done 2026-08-12: the byline fix.** `display_name` and `user_nicename` were
   both `casey`, identical to the login, and `/wp-json/wp/v2/users` publishes
   both without authentication. Confirmed exposed on the live site while 48
@@ -821,16 +915,99 @@ are execution-assist and each stays open across turns.
 - Timing mattered: `user_nicename` is the author-archive URL, so changing it
   before anything is indexed costs nothing, and changing it afterwards moves a
   URL Google knows about.
-- Known members, from this session and from `PLAN.md`: the `display_name` and
-  `user_nicename` fix, deleting the fixtures, the Complianz wizard, the Rank
-  Math wizard with its schema module off, connecting GA4 behind consent, then
-  `blog_public` to 1, submitting the sitemap, and activating `wp-super-cache`.
+- **Done 2026-08-13: auto-updates enabled** for all plugins and all themes, now
+  that Phase 13 has proven a restore. Recorded here rather than in Phase 13
+  because it is hygiene, not backup work, and because the decision it closes is
+  logged in the decisions list above.
+- Remaining members after the split: `blog_public` to `1`, submitting the
+  sitemap, activating `wp-super-cache`, and taking one manual Lightsail snapshot
+  as a fast-restore point now that the host is fully configured.
 - Ordering constraint already known: `blog_public` flips last, and the sitemap
   is submitted the same day, because submitting it while the site is noindexed
   teaches Search Console the sitemap is broken.
+- These four belong together in one phase because they are one event. The site
+  is either launched or it is not, and half of this list applied is a site that
+  is indexed with no cache or cached with no index.
+
+### Phase 18: e4c_field() reconstructs repeater rows when the fields plugin is inactive.
+- Status: planned 2026-08-13, **found by measurement during Phase 14** rather
+  than by reading the code. Low priority and not a launch blocker. Can run
+  before or after Phase 17.
+- One-line goal: stop the degraded path from rendering a row count where the
+  rows should be.
+- **The bug, observed not theorised.** ACF and SCF store a repeater as a count
+  in the parent key plus one row per index: `e4c_pros` is `2`, and the values
+  live in `e4c_pros_0_text` and `e4c_pros_1_text`. The fallback in
+  `theme/inc/template-helpers.php` calls `get_post_meta( 'e4c_pros' )`, gets the
+  string `2`, and `single-review.php` renders one bullet reading **"2"** under
+  "What works". Reproduced in the container by deactivating
+  `secure-custom-fields` against a post whose fields were written through the
+  plugin.
+- Pre-existing, and not introduced by Phase 14. It has been latent since the
+  fallback was written, and could not surface in any earlier container run
+  because no container had ACF, so no container had data in ACF's shape.
+- Narrow trigger, which is why it is low priority: it needs data written by the
+  plugin **and** the plugin later inactive. Phase 14 made that less likely by
+  putting the plugin in `plugins.txt`, so a provisioned host always activates
+  it. A manual deactivation is now the only route in.
+- Likely shape of the fix: in `e4c_field()`, when the raw value is numeric and
+  `{key}_0_` meta exists, rebuild the array of rows from the indexed keys.
+  Sub-field names are already known to the templates, so the reconstruction can
+  be generic rather than per field.
+- Deliberately not fixed inside Phase 14, per the no-piggybacking rule. It is a
+  behaviour change to a shared helper with its own scenarios and deserves its
+  own diff and its own test.
+
+### Phase 19: README's opening sections describe the repo as it was before the theme landed.
+- Status: planned 2026-08-13, noticed while editing `README.md` during Phase 14
+  and deliberately not fixed there, per no-piggybacking.
+- Two concrete staleness bugs, both above the fold and both in the first thing
+  a reader sees. The `## Layout` block lists `compose.yaml`, `docker/`,
+  `plugins/e4c-compliance/` and `scripts/`, and omits `theme/` and
+  `plugins/e4c-content/`, which are now two of the most important directories.
+  The line under it still reads "The base theme is not here yet. Casey is
+  supplying it", which stopped being true when Phase 8 landed.
+- Small, and worth its own diff precisely because it is small: a doc fix mixed
+  into a behaviour change is the kind of thing that gets reverted together with
+  it.
 
 ## Phase reports
 <!-- pasted at Stage 5, newest first -->
+
+### Phase 14, 2026-08-13
+
+**Changed.** Five files, exactly as planned. `scripts/plugins.txt` gains
+`secure-custom-fields` and loses the "CANNOT be in this list, and still
+required" block. `plugins/e4c-content/inc/admin-notices.php` and
+`plugins/e4c-content/inc/fields.php` change wording and docblocks only.
+`scripts/test-provision/verify.sh` gains three checks. `README.md` gains build
+log Step 11.
+
+**Verified before planning, which changed the plan.** The published SCF package
+was downloaded and inspected at 6.9.5 rather than trusted from memory. All five
+field types `fields.php` uses are present, including `repeater`, and
+`acf_add_local_field_group`, `get_field`, `have_rows`, `acf_get_field_type` and
+`acf_get_local_field_groups` all resolve under their ACF names. That is what
+turned this from a purchase into a one-line change to `plugins.txt`.
+
+**Tested.** `bash scripts/test-provision/run.sh`, exit 0, `ALL CHECKS PASSED`,
+59 checks against the previous 56. `secure-custom-fields active` proves
+`provision.sh` installed it from `plugins.txt` with no human step.
+
+**Rendered through the real path for the first time.** A review was created in
+the container with `update_field()` and fetched: 36,461 bytes, **zero** PHP
+errors, and all six values present including both repeater rows and the specs
+table. `wp post meta list` shows the underscore-paired keys (`_e4c_pros` holding
+`field_e4c_pros`) that the raw-meta fallback never writes, which is the proof
+the ACF path ran. Every render proven before this phase went through the
+fallback, because no container had ACF.
+
+**Found while verifying, deferred to Phase 18.** The fallback misreads
+ACF-written repeaters and renders the row count as a list item. Measured by
+deactivating the plugin and re-fetching, not inferred. Pre-existing, narrow
+trigger, and out of scope here.
+
+**Deferred.** The live deploy, which is Casey's. The Phase 18 fallback fix.
 
 ### Phase 8b, 2026-08-12
 

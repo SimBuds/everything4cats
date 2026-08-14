@@ -9,6 +9,7 @@
 # affiliate review site needs the same SEO, link-cloaking, redirect, mail and
 # backup layers whatever it writes about.
 
+secure-custom-fields            # the custom fields plugins/e4c-content registers; see the note below
 seo-by-rank-math                # SEO, sitemaps, and Article schema
 fluent-smtp                     # transactional mail relay; without it password resets fail silently
 updraftplus                     # backups, configured to off-site storage before launch
@@ -31,16 +32,30 @@ akismet:delete                  # comment spam filter; comments are not part of 
 hello:delete                    # Hello Dolly, a 2004 joke plugin that prints song lyrics in the admin
 
 # ---------------------------------------------------------------------------
-# CANNOT be in this list, and still required:
+# secure-custom-fields, and why it is the field layer rather than ACF Pro.
 #
-# Advanced Custom Fields Pro. plugins/e4c-content registers its field groups
-# through ACF, and ACF Pro is commercial and not on wordpress.org, so no slug
-# here can install it. It is installed and licensed by hand in wp-admin.
+# plugins/e4c-content registers its field groups through ACF's API. Four of the
+# eight fields are `repeater`, which was a Pro-only field type, so this line
+# used to read "CANNOT be in this list, and still required": ACF Pro is
+# commercial and not on wordpress.org, so no slug here could install it, and it
+# had to be bought and licensed by hand in wp-admin.
 #
-# Recorded here rather than only in the README because nothing breaks without
-# it, which is what makes it easy to miss. Post types still register, reviews
-# stay published, e4c-content prints an admin notice, and the theme's
-# e4c_field() falls back to raw post meta. What is missing is the editing UI.
+# Replaced 2026-08-13 with Secure Custom Fields, WordPress.org's October 2024
+# fork of ACF. Verified against the published 6.9.5 package before switching,
+# rather than assumed: every field type e4c-content uses is present (text,
+# textarea, url, post_object, repeater), flexible-content, clone and gallery
+# ship too, and acf_add_local_field_group, get_field and have_rows all still
+# resolve under their ACF names. No PHP in the theme or in e4c-content changed.
+#
+# The saving is not really the licence fee. It is that this file can describe
+# the whole plugin baseline again, so a rebuilt host needs no manual plugin
+# step, and the container harness exercises the real get_field() path instead
+# of only the raw post-meta fallback in the theme's e4c_field().
+#
+# If it is ever absent, nothing breaks loudly, which is what makes it easy to
+# miss. Post types still register, reviews stay published, e4c-content prints
+# an admin notice, and e4c_field() falls back to raw post meta. What is missing
+# is the editing UI.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
