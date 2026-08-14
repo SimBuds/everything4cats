@@ -38,6 +38,20 @@ Tags: blog, custom-menu, editor-style, block-patterns
 	--e4c-gutter: var(--wp--custom--gutter);
 	--e4c-page-max: var(--wp--style--global--wide-size, 1440px);
 	--e4c-ease: var(--wp--custom--ease);
+
+	/* Controls. Two sizes, and every button-shaped element on the site is one
+	   of them. Height is stated outright rather than left to emerge from font
+	   size plus padding: the body leading is 1.72, which is right for prose and
+	   badly wrong inside a button, and every control that failed to override it
+	   was being inflated by roughly 12px it never asked for. Stating the height
+	   also means a nav link, a filter pill and a submit button sitting on one
+	   row are the same height even though they carry different font sizes. */
+	--e4c-control-h: 40px;
+	--e4c-control-pad-x: 20px;
+	--e4c-control-fs: var(--wp--preset--font-size--small);
+	--e4c-control-h-sm: 32px;
+	--e4c-control-pad-x-sm: 14px;
+	--e4c-control-fs-sm: var(--wp--preset--font-size--meta);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -79,10 +93,13 @@ img, svg, video { max-width: 100%; height: auto; }
 }
 .e4c-nav { flex: 0 1 auto; }
 .e4c-nav ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; list-style: none; margin: 0; padding: 0; }
+/* Nav links are not buttons, but they share a row with two of them, so they
+   take the small control's height. Anything else leaves the header uneven. */
 .e4c-nav a {
-	display: block; text-decoration: none; white-space: nowrap;
-	font-size: var(--wp--preset--font-size--small); font-weight: 700;
-	padding: 9px 15px; border-radius: var(--wp--custom--radius-pill);
+	display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap;
+	min-height: var(--e4c-control-h-sm); padding: 0 var(--e4c-control-pad-x-sm);
+	font-size: var(--e4c-control-fs-sm); font-weight: 700; line-height: 1.2;
+	border-radius: var(--wp--custom--radius-pill);
 	color: var(--e4c-ink); transition: background var(--e4c-ease), color var(--e4c-ease);
 }
 .e4c-nav a:hover, .e4c-nav a:focus-visible { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
@@ -97,18 +114,38 @@ img, svg, video { max-width: 100%; height: auto; }
 	.e4c-actions { flex: 0 0 auto; }
 }
 
-.e4c-btn {
+/* The one control base. Everything button-shaped opts in here and adds only
+   its own colour, so a size change is one token and not six edits. The
+   line-height is the load-bearing line: without it these inherit the body's
+   1.72 and each grows by about 12px. */
+.e4c-btn,
+.e4c-facet,
+.e4c-pagination .page-numbers,
+.e4c-shell .search-submit {
 	display: inline-flex; align-items: center; justify-content: center;
-	font-family: inherit; font-size: var(--wp--preset--font-size--ui); font-weight: 700;
-	padding: 13px 24px; border-radius: var(--wp--custom--radius-pill);
+	min-height: var(--e4c-control-h);
+	padding: 0 var(--e4c-control-pad-x);
+	font-family: inherit; font-size: var(--e4c-control-fs); line-height: 1.2;
+	border-radius: var(--wp--custom--radius-pill);
 	border: 1px solid transparent; cursor: pointer; text-decoration: none;
 	transition: background var(--e4c-ease), color var(--e4c-ease), border-color var(--e4c-ease);
 }
+
+/* The small step. Used wherever controls sit alongside text rather than
+   carrying the page: the header row, filter pills, pagination. */
+.e4c-btn--sm,
+.e4c-facet,
+.e4c-pagination .page-numbers {
+	min-height: var(--e4c-control-h-sm);
+	padding-inline: var(--e4c-control-pad-x-sm);
+	font-size: var(--e4c-control-fs-sm);
+}
+
+.e4c-btn { font-weight: 700; }
 .e4c-btn--primary { background: var(--e4c-brand); color: var(--e4c-on-brand); }
 .e4c-btn--primary:hover, .e4c-btn--primary:focus-visible { background: var(--e4c-brand-text); color: var(--e4c-on-brand); }
 .e4c-btn--secondary { background: transparent; color: var(--e4c-brand-text); border-color: var(--e4c-brand); }
 .e4c-btn--secondary:hover, .e4c-btn--secondary:focus-visible { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
-.e4c-btn--sm { font-size: var(--wp--preset--font-size--meta); padding: 9px 18px; }
 :where(a, button, input, summary):focus-visible { outline: 2px solid var(--e4c-brand-text); outline-offset: 2px; }
 
 .e4c-tag {
@@ -193,9 +230,29 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-patch p { margin: 0; max-width: 52ch; }
 
 .e4c-footer { border-top: 1px solid var(--e4c-rule); margin-top: var(--wp--preset--spacing--70); padding-block: var(--wp--preset--spacing--50); font-size: var(--wp--preset--font-size--small); }
-.e4c-footer__cols { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-.e4c-footer h2 { font-family: var(--wp--preset--font-family--text); font-size: var(--wp--preset--font-size--meta); text-transform: uppercase; letter-spacing: 0.1em; color: var(--e4c-ink-meta); margin: 0 0 12px; }
-.e4c-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+/* Stacked by default, and columns only once there is room for them.
+ *
+ * The link columns are sized to their own content rather than taking an equal
+ * share. Equal 1fr thirds gave Legal a full third of the footer to hold one
+ * short link, and the leftover to its right read as a reserved slot for a
+ * fourth menu rather than as margin. Sizing to content means the number of
+ * columns is decided by how many menus footer.php actually renders, which is
+ * conditional on has_nav_menu(), so a hardcoded count would go wrong the first
+ * time a menu is added or dropped. The brand keeps the flexible remainder. */
+.e4c-footer__cols { display: grid; gap: var(--wp--preset--spacing--50); }
+
+@media (min-width: 700px) {
+	.e4c-footer__cols {
+		grid-template-columns: minmax(240px, 1fr);
+		grid-auto-flow: column;
+		grid-auto-columns: max-content;
+		column-gap: var(--wp--preset--spacing--60);
+	}
+}
+.e4c-footer h2 { font-family: var(--wp--preset--font-family--text); font-size: var(--wp--preset--font-size--meta); text-transform: uppercase; letter-spacing: 0.1em; color: var(--e4c-ink-meta); margin: 0 0 16px; }
+/* Footer links are a short list of destinations, not prose, so they get their
+   own leading rather than the body's 1.72 wrapped around single lines. */
+.e4c-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; line-height: 1.35; }
 .e4c-footer a { text-decoration: none; }
 .e4c-footer a:hover { text-decoration: underline; }
 .e4c-footer__legal { margin-top: var(--wp--preset--spacing--40); color: var(--e4c-ink-meta); font-size: var(--wp--preset--font-size--caption); }
@@ -209,7 +266,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-footer__statement { margin: 0; color: var(--e4c-ink-muted); max-width: 34ch; }
 
 .e4c-pagination { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--wp--preset--spacing--40); }
-.e4c-pagination .page-numbers { padding: 9px 14px; border-radius: var(--wp--custom--radius-pill); text-decoration: none; background: var(--e4c-surface); }
+.e4c-pagination .page-numbers { background: var(--e4c-surface); color: var(--e4c-ink); }
 .e4c-pagination .page-numbers.current { background: var(--e4c-brand); color: var(--e4c-on-brand); }
 
 /* Archive and page headings. These exist so the templates added on 2026-08-12
@@ -224,11 +281,8 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-facets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .e4c-facets--footer { margin-top: var(--wp--preset--spacing--50); padding-top: var(--wp--preset--spacing--30); border-top: 1px solid var(--e4c-rule); }
 .e4c-facet {
-	display: inline-flex; align-items: center; gap: 8px;
-	padding: 8px 14px; border-radius: var(--wp--custom--radius-pill);
+	gap: 8px;
 	background: var(--e4c-surface); color: var(--e4c-ink);
-	font-size: var(--wp--preset--font-size--ui); text-decoration: none;
-	border: 1px solid transparent; transition: background var(--e4c-ease), border-color var(--e4c-ease);
 }
 .e4c-facet:hover { border-color: var(--e4c-rule); }
 .e4c-facet--on { background: var(--e4c-brand); color: var(--e4c-on-brand); }
@@ -284,16 +338,20 @@ img, svg, video { max-width: 100%; height: auto; }
    already labelled and accessible. */
 .e4c-shell .search-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .e4c-shell .search-form label { flex: 1 1 220px; }
+/* The field takes the control height so it and the submit button match. Both
+   keep the rounded-rectangle radius rather than the pill: a pill field reads as
+   a button, and the pair has to look like one unit. */
 .e4c-shell .search-field {
-	width: 100%; padding: 11px 16px; border-radius: var(--wp--custom--radius-control);
+	width: 100%; min-height: var(--e4c-control-h);
+	padding: 0 var(--e4c-control-pad-x); border-radius: var(--wp--custom--radius-control);
 	border: 1px solid var(--e4c-rule); background: var(--e4c-page); color: var(--e4c-ink);
-	font: inherit; font-size: var(--wp--preset--font-size--ui);
+	font: inherit; font-size: var(--e4c-control-fs); line-height: 1.2;
 }
 .e4c-shell .search-field:focus-visible { outline: 2px solid var(--e4c-brand); outline-offset: 2px; }
 .e4c-shell .search-submit {
-	padding: 11px 20px; border: 0; border-radius: var(--wp--custom--radius-control);
+	border-radius: var(--wp--custom--radius-control);
 	background: var(--e4c-brand); color: var(--e4c-on-brand);
-	font: inherit; font-weight: 700; cursor: pointer;
+	font-weight: 700;
 }
 
 @media (prefers-reduced-motion: reduce) {
