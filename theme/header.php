@@ -64,14 +64,14 @@ defined( 'ABSPATH' ) || exit;
 		<div class="e4c-actions">
 			<?php
 			e4c_button( home_url( '/?s=' ), __( 'Search', 'e4c' ), 'secondary', array(
-				'class'      => 'e4c-btn e4c-btn--secondary e4c-btn--sm',
+				'class'      => 'e4c-btn e4c-btn--secondary',
 				'aria-label' => __( 'Search the site', 'e4c' ),
 			) );
 
 			$e4c_newsletter = get_page_by_path( 'newsletter' );
 			if ( $e4c_newsletter ) {
 				e4c_button( get_permalink( $e4c_newsletter ), __( 'Get the email', 'e4c' ), 'primary', array(
-					'class' => 'e4c-btn e4c-btn--primary e4c-btn--sm',
+					'class' => 'e4c-btn e4c-btn--primary',
 				) );
 			}
 			?>

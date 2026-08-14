@@ -131,11 +131,12 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-nav { flex: 0 1 auto; }
 .e4c-nav ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--e4c-gap-1); list-style: none; margin: 0; padding: 0; }
 /* Nav links are not buttons, but they share a row with two of them, so they
-   take the small control's height. Anything else leaves the header uneven. */
+   take the control height. Anything else leaves the header uneven. Moved from
+   the small step to the default one on 2026-08-14, following the buttons. */
 .e4c-nav a {
 	display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap;
-	min-height: var(--e4c-control-h-sm); padding: 0 var(--e4c-control-pad-x-sm);
-	font-size: var(--e4c-control-fs-sm); font-weight: 700; line-height: 1.2;
+	min-height: var(--e4c-control-h); padding: 0 var(--e4c-control-pad-x);
+	font-size: var(--e4c-control-fs); font-weight: 700; line-height: 1.2;
 	border-radius: var(--wp--custom--radius-pill);
 	color: var(--e4c-ink); transition: background var(--e4c-ease), color var(--e4c-ease);
 }
@@ -154,7 +155,7 @@ img, svg, video { max-width: 100%; height: auto; }
    215px band where it fitted comfortably. 1000px keeps about 95px of slack for
    the fact that those label widths are estimated from character counts rather
    than measured, and for a fifth nav item later. */
-@media (max-width: 1000px) {
+@media (max-width: 1080px) {
 	.e4c-nav { order: 3; flex: 1 1 100%; }
 	.e4c-brand { flex: 1 1 auto; }
 	.e4c-actions { flex: 0 0 auto; }
@@ -178,7 +179,18 @@ img, svg, video { max-width: 100%; height: auto; }
 	.e4c-brand { min-width: 0; }
 	.e4c-brand img { max-height: clamp(26px, 7vw, 42px); }
 	.e4c-brand__text { font-size: var(--wp--preset--font-size--title); }
-	.e4c-actions { gap: var(--e4c-gap-1); --e4c-control-pad-x-sm: 11px; }
+	/* The compact step lives here rather than as e4c-btn--sm in header.php.
+	   The header was the only place on the site using that modifier, which made
+	   its buttons 32px against 40px everywhere else. Applying it by viewport
+	   keeps the header matching the body where both are visible, and keeps the
+	   phone row fitting where no body button is on screen to compare against. */
+	.e4c-actions { gap: var(--e4c-gap-1); }
+	.e4c-actions .e4c-btn, .e4c-nav a {
+		min-height: var(--e4c-control-h-sm);
+		padding-inline: var(--e4c-control-pad-x-sm);
+		font-size: var(--e4c-control-fs-sm);
+	}
+	.e4c-actions .e4c-btn { --e4c-control-pad-x-sm: 11px; }
 }
 
 /* The one control base. Everything button-shaped opts in here and adds only
@@ -201,7 +213,10 @@ img, svg, video { max-width: 100%; height: auto; }
 
 /* The small step. Used wherever controls sit alongside text rather than
    carrying the page: the header row, filter pills, pagination. */
-.e4c-btn--sm,
+/* .e4c-btn--sm was removed from this list on 2026-08-14. The header was its only
+   caller, and it now takes the small tokens from the phone media query instead.
+   Leaving the modifier defined but unused is how a stylesheet grows a second
+   way to do the same thing. */
 .e4c-facet,
 .e4c-pagination .page-numbers {
 	min-height: var(--e4c-control-h-sm);
