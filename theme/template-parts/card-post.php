@@ -24,7 +24,7 @@ $e4c_dek   = e4c_field( 'e4c_dek' ) ?: get_the_excerpt();
 	<h3 class="e4c-card__title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h3>
 
 	<?php if ( $e4c_dek ) : ?>
-		<p style="margin:0;color:var(--e4c-ink-muted);"><?php echo esc_html( wp_trim_words( $e4c_dek, 26 ) ); ?></p>
+		<p class="e4c-card__dek"><?php echo esc_html( wp_trim_words( $e4c_dek, 26 ) ); ?></p>
 	<?php endif; ?>
 
 	<p class="e4c-card__meta">

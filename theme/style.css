@@ -45,13 +45,39 @@ Tags: blog, custom-menu, editor-style, block-patterns
 	   badly wrong inside a button, and every control that failed to override it
 	   was being inflated by roughly 12px it never asked for. Stating the height
 	   also means a nav link, a filter pill and a submit button sitting on one
-	   row are the same height even though they carry different font sizes. */
+	   row are the same height even though they carry different font sizes.
+
+	   The label size is `small` (15px), not `ui` (16px), which is what buttons
+	   used before. 16px labels widen every button, and the header row on a
+	   375px screen has only a few pixels of slack once the logo and both
+	   buttons are on it. `ui` is left in theme.json rather than deleted: it is
+	   offered to the block editor, and removing a preset orphans any published
+	   content already carrying has-ui-font-size. Same reasoning for spacing--20,
+	   which the stylesheet also no longer uses. */
 	--e4c-control-h: 40px;
 	--e4c-control-pad-x: 20px;
 	--e4c-control-fs: var(--wp--preset--font-size--small);
 	--e4c-control-h-sm: 32px;
 	--e4c-control-pad-x-sm: 14px;
 	--e4c-control-fs-sm: var(--wp--preset--font-size--meta);
+
+	/* The small-gap ladder. theme.json's spacing scale is six fluid clamp()
+	   steps built for section rhythm, and its smallest is clamp(12px, 1.5vw,
+	   16px), which is useless for the space between two buttons. Every rule
+	   that needed a small gap therefore invented its own value, and the audit
+	   on 2026-08-14 found thirteen distinct hand-picked numbers across
+	   thirty-nine uses. This is that set collapsed onto one 4px ladder.
+
+	   Use these for space *between* elements. Space *inside* a component keeps
+	   its own token, which is why --e4c-control-pad-x is not on this ladder:
+	   a button's internal padding is tuned against its label and its height,
+	   not against the gap to its neighbour. */
+	--e4c-gap-1: 4px;
+	--e4c-gap-2: 8px;
+	--e4c-gap-3: 12px;
+	--e4c-gap-4: 16px;
+	--e4c-gap-5: 20px;
+	--e4c-gap-6: 24px;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -61,7 +87,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-skip {
 	position: absolute; left: -9999px; top: 0; z-index: 200;
 	background: var(--e4c-brand); color: var(--e4c-on-brand);
-	padding: 12px 20px; border-radius: 0 0 var(--wp--custom--radius-control) 0;
+	padding: var(--e4c-gap-3) var(--e4c-gap-5); border-radius: 0 0 var(--wp--custom--radius-control) 0;
 	font-size: var(--wp--preset--font-size--meta); font-weight: 700; text-decoration: none;
 }
 .e4c-skip:focus { left: 0; }
@@ -73,7 +99,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-bar {
 	background: var(--e4c-second-deep); color: var(--e4c-second-tint);
 	font-size: var(--wp--preset--font-size--caption); letter-spacing: 0.01em;
-	padding: 9px 20px; text-align: center; margin: 0;
+	padding: var(--e4c-gap-2) var(--e4c-gap-5); text-align: center; margin: 0;
 }
 
 .e4c-header {
@@ -83,7 +109,7 @@ img, svg, video { max-width: 100%; height: auto; }
 }
 .e4c-header__inner {
 	display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
-	gap: 10px 24px; padding-block: 12px;
+	gap: var(--e4c-gap-2) var(--e4c-gap-6); padding-block: var(--e4c-gap-3);
 }
 .e4c-brand { flex: 1 1 160px; display: flex; align-items: center; }
 /* max-height rather than height, with height:auto, so the logo has a normal
@@ -96,7 +122,7 @@ img, svg, video { max-width: 100%; height: auto; }
 	font-size: var(--wp--preset--font-size--title-lg); color: var(--e4c-ink); text-decoration: none;
 }
 .e4c-nav { flex: 0 1 auto; }
-.e4c-nav ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.e4c-nav ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--e4c-gap-1); list-style: none; margin: 0; padding: 0; }
 /* Nav links are not buttons, but they share a row with two of them, so they
    take the small control's height. Anything else leaves the header uneven. */
 .e4c-nav a {
@@ -108,7 +134,7 @@ img, svg, video { max-width: 100%; height: auto; }
 }
 .e4c-nav a:hover, .e4c-nav a:focus-visible { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
 .e4c-nav .current-menu-item > a, .e4c-nav .current-menu-parent > a { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
-.e4c-actions { flex: 1 1 160px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.e4c-actions { flex: 1 1 160px; display: flex; align-items: center; justify-content: flex-end; gap: var(--e4c-gap-2); }
 
 /* The five nav links and both actions cannot share one row below this width,
    so the links drop to their own centred row instead of the buttons breaking off. */
@@ -125,11 +151,11 @@ img, svg, video { max-width: 100%; height: auto; }
    control that reflows is worse than a wordmark that scales, and the logo is
    free to shrink further if a narrower screen or a longer label needs it. */
 @media (max-width: 900px) {
-	.e4c-header__inner { column-gap: 12px; }
+	.e4c-header__inner { column-gap: var(--e4c-gap-3); }
 	.e4c-brand { flex: 0 1 auto; min-width: 0; }
 	.e4c-brand img { max-height: clamp(26px, 7vw, 42px); }
 	.e4c-brand__text { font-size: var(--wp--preset--font-size--title); }
-	.e4c-actions { flex: 0 0 auto; gap: 6px; --e4c-control-pad-x-sm: 11px; }
+	.e4c-actions { gap: var(--e4c-gap-1); --e4c-control-pad-x-sm: 11px; }
 }
 
 /* The one control base. Everything button-shaped opts in here and adds only
@@ -170,7 +196,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-tag {
 	display: inline-block; font-size: var(--wp--preset--font-size--eyebrow);
 	font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-	padding: 6px 12px; border-radius: var(--wp--custom--radius-tag);
+	padding: var(--e4c-gap-1) var(--e4c-gap-3); border-radius: var(--wp--custom--radius-tag);
 	background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong);
 }
 .e4c-tag--second { background: var(--e4c-second-patch); color: var(--e4c-second-text); }
@@ -182,48 +208,52 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-card {
 	background: var(--e4c-surface); border: 1px solid var(--e4c-rule);
 	border-radius: var(--wp--custom--radius-card); padding: var(--wp--custom--panel-pad);
-	display: flex; flex-direction: column; gap: 14px;
+	display: flex; flex-direction: column; gap: var(--e4c-gap-3);
 }
 .e4c-card__media { border-radius: var(--wp--custom--radius-media); overflow: hidden; background: var(--e4c-page); }
 .e4c-card__media img { display: block; width: 100%; height: auto; }
 .e4c-card__title { margin: 0; font-size: var(--wp--preset--font-size--title); }
 .e4c-card__title a { color: inherit; text-decoration: none; }
 .e4c-card__title a:hover { color: var(--e4c-brand-text); }
+.e4c-card__dek { margin: 0; color: var(--e4c-ink-muted); }
 .e4c-card__meta { margin: 0; font-size: var(--wp--preset--font-size--meta); color: var(--e4c-ink-meta); }
 .e4c-grid { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
 
 .e4c-main { padding-bottom: var(--wp--preset--spacing--70); }
 .e4c-section { padding-block: var(--wp--preset--spacing--50); }
-.e4c-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: var(--wp--preset--spacing--30); }
+.e4c-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--e4c-gap-3); margin-bottom: var(--wp--preset--spacing--30); }
 .e4c-section__head h2 { margin: 0; font-size: var(--wp--preset--font-size--heading-section); }
 
 .e4c-hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: var(--wp--preset--spacing--50); align-items: center; padding-block: var(--wp--preset--spacing--60); }
-.e4c-hero h1 { margin: 16px 0 18px; font-size: var(--wp--preset--font-size--heading-hero); line-height: 1.02; letter-spacing: -0.02em; max-width: 15ch; }
-.e4c-hero__lede { margin: 0 0 26px; font-size: var(--wp--preset--font-size--lede); line-height: 1.55; max-width: 52ch; color: var(--e4c-ink-muted); }
-.e4c-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.e4c-hero h1 { margin: var(--e4c-gap-4) 0 var(--e4c-gap-4); font-size: var(--wp--preset--font-size--heading-hero); line-height: 1.02; letter-spacing: -0.02em; max-width: 15ch; }
+.e4c-hero__lede { margin:0 0 var(--e4c-gap-6); font-size: var(--wp--preset--font-size--lede); line-height: 1.55; max-width: 52ch; color: var(--e4c-ink-muted); }
+.e4c-hero__actions { display: flex; flex-wrap: wrap; gap: var(--e4c-gap-3); align-items: center; }
 .e4c-hero__figure { margin: 0; }
 .e4c-hero__figure img { display: block; width: 100%; height: auto; border-radius: var(--wp--custom--radius-card); background: var(--e4c-surface); }
 
 /* Review */
 .e4c-review { padding-block: var(--wp--preset--spacing--50); }
 .e4c-review__head { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--wp--preset--spacing--50); align-items: start; }
-.e4c-review__head h1 { margin: 14px 0 16px; font-size: var(--wp--preset--font-size--heading-page); }
-.e4c-review__dek { margin: 0 0 20px; font-size: var(--wp--preset--font-size--lede); color: var(--e4c-ink-muted); max-width: 46ch; }
+.e4c-review__head h1 { margin: var(--e4c-gap-3) 0 var(--e4c-gap-4); font-size: var(--wp--preset--font-size--heading-page); }
+.e4c-review__dek { margin:0 0 var(--e4c-gap-5); font-size: var(--wp--preset--font-size--lede); color: var(--e4c-ink-muted); max-width: 46ch; }
 .e4c-review__byline { margin: 0; font-size: var(--wp--preset--font-size--meta); color: var(--e4c-ink-meta); }
-.e4c-verdict { margin-block: var(--wp--preset--spacing--40); display: grid; gap: 18px; }
+.e4c-verdict { margin-block: var(--wp--preset--spacing--40); display: grid; gap: var(--e4c-gap-4); }
 .e4c-verdict__label { font-size: var(--wp--preset--font-size--eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--e4c-second-text); }
 .e4c-verdict__line { margin: 0; font-family: var(--wp--preset--font-family--display); font-size: var(--wp--preset--font-size--heading-sub); line-height: 1.2; }
 .e4c-verdict__price { font-size: var(--wp--preset--font-size--title-lg); font-weight: 700; }
-.e4c-cols { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.e4c-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: var(--wp--preset--font-size--body); }
-.e4c-list li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; }
+.e4c-cols { display: grid; gap: var(--wp--preset--spacing--40); margin-block: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+/* A block that follows the article body and shares its measure, so it lines up
+   with the prose above rather than running the full width of the shell. */
+.e4c-after-article { margin-top: var(--wp--preset--spacing--50); max-width: var(--wp--custom--measure-body); }
+.e4c-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--e4c-gap-2); font-size: var(--wp--preset--font-size--body); }
+.e4c-list li { display: grid; grid-template-columns: 22px 1fr; gap: var(--e4c-gap-2); align-items: start; }
 .e4c-list__mark { font-weight: 700; }
 .e4c-list--pros .e4c-list__mark { color: var(--e4c-brand-text); }
 .e4c-list--cons .e4c-list__mark { color: var(--e4c-second-text); }
 .e4c-specs { width: 100%; border-collapse: collapse; font-size: var(--wp--preset--font-size--small); }
-.e4c-specs th, .e4c-specs td { text-align: left; padding: 11px 0; border-bottom: 1px solid var(--e4c-rule); vertical-align: top; }
+.e4c-specs th, .e4c-specs td { text-align: left; padding: var(--e4c-gap-3) 0; border-bottom: 1px solid var(--e4c-rule); vertical-align: top; }
 .e4c-specs th { width: 40%; font-weight: 700; color: var(--e4c-ink-muted); }
-.e4c-buy { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.e4c-buy { display: flex; flex-wrap: wrap; gap: var(--e4c-gap-2); align-items: center; }
 .e4c-buy__note { font-size: var(--wp--preset--font-size--caption); color: var(--e4c-ink-meta); }
 
 /* The compliance plugin injects .art-disclose above the first paragraph of the
@@ -232,7 +262,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-article { max-width: var(--wp--custom--measure-body); }
 .e4c-article > * + * { margin-top: 1.1em; }
 .e4c-article .art-disclose {
-	margin: 0 0 1.4em; padding: 14px 18px;
+	margin: 0 0 1.4em; padding: var(--e4c-gap-3) var(--e4c-gap-4);
 	background: var(--e4c-second-tint); color: var(--e4c-second-deep);
 	border-radius: var(--wp--custom--radius-tile);
 	font-size: var(--wp--preset--font-size--caption); line-height: 1.55;
@@ -243,7 +273,7 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-patch {
 	background: var(--e4c-second-patch); color: var(--e4c-second-deep);
 	border-radius: var(--wp--custom--radius-patch); padding: var(--wp--preset--spacing--60);
-	display: grid; gap: 16px; justify-items: start;
+	display: grid; gap: var(--e4c-gap-4); justify-items: start;
 }
 .e4c-patch h2 { margin: 0; font-size: var(--wp--preset--font-size--heading-sub); color: inherit; }
 .e4c-patch p { margin: 0; max-width: 52ch; }
@@ -268,10 +298,10 @@ img, svg, video { max-width: 100%; height: auto; }
 		column-gap: var(--wp--preset--spacing--60);
 	}
 }
-.e4c-footer h2 { font-family: var(--wp--preset--font-family--text); font-size: var(--wp--preset--font-size--meta); text-transform: uppercase; letter-spacing: 0.1em; color: var(--e4c-ink-meta); margin: 0 0 16px; }
+.e4c-footer h2 { font-family: var(--wp--preset--font-family--text); font-size: var(--wp--preset--font-size--meta); text-transform: uppercase; letter-spacing: 0.1em; color: var(--e4c-ink-meta); margin:0 0 var(--e4c-gap-4); }
 /* Footer links are a short list of destinations, not prose, so they get their
    own leading rather than the body's 1.72 wrapped around single lines. */
-.e4c-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; line-height: 1.35; }
+.e4c-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--e4c-gap-5); line-height: 1.35; }
 .e4c-footer a { text-decoration: none; }
 .e4c-footer a:hover { text-decoration: underline; }
 .e4c-footer__legal { margin-top: var(--wp--preset--spacing--40); color: var(--e4c-ink-meta); font-size: var(--wp--preset--font-size--caption); }
@@ -280,7 +310,7 @@ img, svg, video { max-width: 100%; height: auto; }
    uppercase letter-spaced treatment the other footer headings get, because
    those rules are typographic and an img inherits none of them usefully while
    the margin and colour still apply. */
-.e4c-footer__brand { margin: 0 0 14px; text-transform: none; letter-spacing: normal; }
+.e4c-footer__brand { margin:0 0 var(--e4c-gap-3); text-transform: none; letter-spacing: normal; }
 .e4c-footer__logo { width: auto; height: 44px; display: block; }
 .e4c-footer__statement { margin: 0; color: var(--e4c-ink-muted); max-width: 34ch; }
 
@@ -296,7 +326,7 @@ img, svg, video { max-width: 100%; height: auto; }
 	.e4c-footer__legal { text-align: center; }
 }
 
-.e4c-pagination { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--wp--preset--spacing--40); }
+.e4c-pagination { display: flex; gap: var(--e4c-gap-2); flex-wrap: wrap; margin-top: var(--wp--preset--spacing--40); }
 .e4c-pagination .page-numbers { background: var(--e4c-surface); color: var(--e4c-ink); }
 .e4c-pagination .page-numbers.current { background: var(--e4c-brand); color: var(--e4c-on-brand); }
 
@@ -309,10 +339,10 @@ img, svg, video { max-width: 100%; height: auto; }
 /* Facets. Used three ways: subcategory links on a term archive, the post-type
    filter on search, and the category trail under a guide. One component with
    an optional count rather than three near-identical ones. */
-.e4c-facets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.e4c-facets { display: flex; flex-wrap: wrap; gap: var(--e4c-gap-2); align-items: center; }
 .e4c-facets--footer { margin-top: var(--wp--preset--spacing--50); padding-top: var(--wp--preset--spacing--30); border-top: 1px solid var(--e4c-rule); }
 .e4c-facet {
-	gap: 8px;
+	gap: var(--e4c-gap-2);
 	background: var(--e4c-surface); color: var(--e4c-ink);
 }
 .e4c-facet:hover { border-color: var(--e4c-rule); }
@@ -344,7 +374,7 @@ img, svg, video { max-width: 100%; height: auto; }
 	font-size: var(--wp--preset--font-size--title); line-height: 1;
 	color: var(--e4c-second); font-variant-numeric: tabular-nums;
 }
-.e4c-pick__body { display: grid; gap: 10px; justify-items: start; }
+.e4c-pick__body { display: grid; gap: var(--e4c-gap-2); justify-items: start; }
 .e4c-pick__title { margin: 0; font-size: var(--wp--preset--font-size--heading-minor); }
 .e4c-pick__title a { text-decoration: none; }
 .e4c-pick__title a:hover { text-decoration: underline; }
@@ -362,12 +392,12 @@ img, svg, video { max-width: 100%; height: auto; }
    the verdict panel, which is deliberate: both are the site making a claim it
    can be held to. */
 .e4c-pledge { margin-block: var(--wp--preset--spacing--40); max-width: var(--wp--custom--measure); }
-.e4c-pledge .e4c-list { margin-top: 14px; }
+.e4c-pledge .e4c-list { margin-top: var(--e4c-gap-3); }
 
 /* Core's search form, which get_search_form() emits on the 404 and search
    templates. Styled rather than replaced with a custom form: core's markup is
    already labelled and accessible. */
-.e4c-shell .search-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.e4c-shell .search-form { display: flex; gap: var(--e4c-gap-2); flex-wrap: wrap; align-items: center; }
 .e4c-shell .search-form label { flex: 1 1 220px; }
 /* The field takes the control height so it and the submit button match. Both
    keep the rounded-rectangle radius rather than the pill: a pill field reads as

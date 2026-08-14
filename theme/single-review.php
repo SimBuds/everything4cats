@@ -97,10 +97,10 @@ while ( have_posts() ) :
 		<?php endif; ?>
 
 		<?php if ( $e4c_pros || $e4c_cons ) : ?>
-			<section class="e4c-cols" style="margin-block: var(--wp--preset--spacing--40);">
+			<section class="e4c-cols">
 				<?php if ( $e4c_pros ) : ?>
 					<div>
-						<h2 style="font-size:var(--wp--preset--font-size--heading-minor);margin:0 0 14px;"><?php esc_html_e( 'What works', 'e4c' ); ?></h2>
+						<h2 class="e4c-section-title"><?php esc_html_e( 'What works', 'e4c' ); ?></h2>
 						<ul class="e4c-list e4c-list--pros">
 							<?php foreach ( (array) $e4c_pros as $e4c_row ) : ?>
 								<?php $e4c_text = is_array( $e4c_row ) ? ( $e4c_row['text'] ?? '' ) : $e4c_row; ?>
@@ -114,7 +114,7 @@ while ( have_posts() ) :
 
 				<?php if ( $e4c_cons ) : ?>
 					<div>
-						<h2 style="font-size:var(--wp--preset--font-size--heading-minor);margin:0 0 14px;"><?php esc_html_e( 'What does not', 'e4c' ); ?></h2>
+						<h2 class="e4c-section-title"><?php esc_html_e( 'What does not', 'e4c' ); ?></h2>
 						<ul class="e4c-list e4c-list--cons">
 							<?php foreach ( (array) $e4c_cons as $e4c_row ) : ?>
 								<?php $e4c_text = is_array( $e4c_row ) ? ( $e4c_row['text'] ?? '' ) : $e4c_row; ?>
@@ -131,8 +131,8 @@ while ( have_posts() ) :
 		<div class="e4c-article"><?php the_content(); ?></div>
 
 		<?php if ( $e4c_specs ) : ?>
-			<section style="margin-top: var(--wp--preset--spacing--50); max-width: var(--wp--custom--measure-body);">
-				<h2 style="font-size:var(--wp--preset--font-size--heading-minor);margin:0 0 14px;"><?php esc_html_e( 'Specifications', 'e4c' ); ?></h2>
+			<section class="e4c-after-article">
+				<h2 class="e4c-section-title"><?php esc_html_e( 'Specifications', 'e4c' ); ?></h2>
 				<table class="e4c-specs">
 					<tbody>
 						<?php foreach ( (array) $e4c_specs as $e4c_row ) : ?>

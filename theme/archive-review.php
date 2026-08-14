@@ -9,8 +9,8 @@ get_header();
 ?>
 <div class="e4c-shell e4c-section">
 	<div class="e4c-section__head">
-		<h1 style="margin:0;font-size:var(--wp--preset--font-size--heading-page);"><?php esc_html_e( 'Reviews', 'e4c' ); ?></h1>
-		<p style="margin:0;color:var(--e4c-ink-muted);max-width:44ch;"><?php echo esc_html( e4c_method_statement() ); ?></p>
+		<h1 class="e4c-page-title"><?php esc_html_e( 'Reviews', 'e4c' ); ?></h1>
+		<p class="e4c-page-lede"><?php echo esc_html( e4c_method_statement() ); ?></p>
 	</div>
 
 	<?php if ( have_posts() ) : ?>
