@@ -32,7 +32,23 @@ get_header();
 while ( have_posts() ) :
 	the_post();
 	?>
-	<article <?php post_class( 'e4c-shell' ); ?>>
+	<?php
+	/*
+	 * e4c-review carries the vertical padding, and is the same pairing every
+	 * other article template uses. The name is now a poor fit, since
+	 * page-newsletter.php and page-how-we-test.php already use it and neither
+	 * is a review, but at the block level the class is only
+	 * padding-block: spacing--50. Its __head, __dek and __byline rules are
+	 * scoped to children this template does not render, so nothing else here
+	 * changes. Reusing it beats a second class that resolves to one identical
+	 * declaration.
+	 *
+	 * Without it the article had padding-inline only, from e4c-shell, and
+	 * e4c-main sets padding-bottom alone. The title therefore sat flush against
+	 * the sticky header on both policy pages.
+	 */
+	?>
+	<article <?php post_class( 'e4c-shell e4c-review' ); ?>>
 
 		<h1 class="e4c-page-title"><?php the_title(); ?></h1>
 
