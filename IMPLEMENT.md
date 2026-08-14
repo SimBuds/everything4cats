@@ -1,13 +1,21 @@
 # IMPLEMENT.md
 
 ## Current state
-- Active phase: none. Phase 14 complete in the repo, awaiting Casey's commit and
-  the live deploy.
-- Last completed phase: Phase 14. The site is live at https://everything4cats.ca
-- Phase status roll-call: **1 to 14 complete**, including 8 and 8b. Phase 12 is
-  complete technically and still sandboxed pending AWS production access.
-  Phases 15 to 18 are planned. Phase 18 was opened by a bug found while
-  verifying Phase 14 and is not a launch blocker.
+- Active phase: none.
+- Last completed phase: Phase 15c. The site is live at https://everything4cats.ca
+- Phase status roll-call: **1 to 16 complete**, including 8, 8b, 15a and 20 and
+  24. Phase 12 is complete technically and still sandboxed pending AWS
+  production access.
+- **Remaining before launch: Phase 15d** (Casey's reviews and a roundup), then
+  **15b** (QA sweep), then **17** (the flip). Nothing else blocks, and 15d is
+  writing rather than engineering.
+- Proposed and unapproved, none of them launch blockers: **18** repeater
+  fallback, **19** stale README opening sections, **21** the duplicate
+  `Categories` label, **22** Apache security headers, **23** EXIF stripping on
+  upload.
+- Two checks are deliberately owed to later phases rather than skipped: the
+  JSON-LD count per page (Phase 15b, needs published content) and the sitemap's
+  taxonomy list (Phase 17, suppressed while `blog_public` is `0`).
 - What is left is no longer infrastructure. It is the two plugin wizards,
   content, a QA sweep, and the launch flip.
 - **Run order, which is not numeric order.** Phase numbers are identifiers and
@@ -907,7 +915,13 @@ are execution-assist and each stays open across turns.
   useful. That note under Phase 13 is now stale and this phase corrects it.
 
 ### Phase 15: The fixtures are gone and the site's own baseline content is published.
-- Status: planned 2026-08-13. Unblocked, Phase 14 is done.
+- Status: **superseded by its own decomposition, 2026-08-14.** This is now a
+  container rather than a unit of work. Its members are 15a (legal documents,
+  complete), 15c (structure, complete), 15e (menus, complete), 15d (the reviews
+  and roundup, planned) and 15b (the QA sweep, planned). Deleting the fixtures,
+  listed below as a member, turned out to be already done when the inventory was
+  taken. Read the sub-phases for real status; this section is history.
+- Status history: planned 2026-08-13. Unblocked when Phase 14 completed.
 - **Runs second-to-last, after Phase 16 and immediately before Phase 15b.**
   Resequenced 2026-08-14 at Casey's request: content entry and the QA sweep are
   to be the last work before the launch flip. See the run order in
@@ -948,7 +962,11 @@ are execution-assist and each stays open across turns.
   because `e4c_picks` stores a post object rather than a copied title.
 
 ### Phase 15a (execution-assist): The Cookie Policy and Privacy Policy exist, are accurate, and are published.
-- Status: **in progress, opened 2026-08-14** at Casey's request. Split from
+- Status: **complete 2026-08-14.** Both documents are published and render in
+  full. Blocked mid-phase by Phase 24, which had to be built and deployed first:
+  the pages were correct in the database from the start and the theme was
+  discarding them at render.
+- Status history: opened 2026-08-14 at Casey's request. Split from
   Phase 15 because it is a coherent unit that blocks launch on its own, while
   the rest of Phase 15 is open-ended writing.
 - One-line goal: make the consent banner's links resolve to documents that
@@ -971,6 +989,84 @@ are execution-assist and each stays open across turns.
 - Deferred deliberately: the newsletter paragraph, which the draft flags as the
   expected next revision rather than pre-writing.
 - Not legal advice. The draft is a starting point for Casey to review.
+
+### Phase 15c (execution-assist): The structural content exists, so the reviews have somewhere to land.
+- Status: **complete 2026-08-14.** All three verification bullets confirmed:
+  `/how-we-test/`, `/newsletter/` and `/category-of/litter-boxes/` all return
+  200; `Where we stop` renders on the first and the fallback pattern on the
+  second, proving each uses its own template rather than the generic `page.php`;
+  and the homepage title reads
+  `Everything4Cats - Tested in a real house with real cats`.
+- Status history: planned 2026-08-14. Decomposed from Phase 15 at the start of the
+  phase, as that phase said it would be. Run order is 15c, then 15d, then 15b.
+- One-line goal: build everything a review needs around it, before writing any.
+- **Inventory taken first rather than assumed.** The live site has two pages
+  (both legal), three attachments, zero posts, zero reviews, zero roundups, zero
+  `cat-category` terms, an empty Tagline, and `show_on_front=posts`.
+- **Already done, discovered by that inventory:** deleting the fixtures. No
+  Hello world, no Sample Page. That was a Phase 15 member and needs no work.
+- Members:
+  1. **The Tagline.** Empty today. Rank Math puts it in the homepage title, so
+     it is not decorative.
+  2. **`cat-category` terms.** None exist, so every archive is empty and
+     `taxonomy-cat-category.php` has never rendered against a real term.
+  3. **The How we test page.** `page-how-we-test.php` exists and is matched by
+     slug `how-we-test`, but **no page uses it**. PLAN.md calls this the page
+     the site's credibility rests on, and it currently 404s.
+  4. **The Newsletter page.** Same situation, slug `newsletter`. Created
+     deliberately **empty**: the template falls back to the
+     `e4c/newsletter-patch` pattern when `get_the_content()` is falsy, which is
+     exactly right while the provider is still undecided.
+- **The taxonomy encodes the YMYL boundary.** PLAN.md permits litter boxes,
+  toys, furniture and food *storage*, and puts diet, illness and medication out
+  of scope. Naming the term `Food storage` rather than `Food` makes that
+  structural rather than a rule someone has to remember while tagging.
+- Environment: `# ON THE SERVER`, all of it Casey's to run. The agent drafts the
+  How we test body, which is methodology prose rather than product claims.
+- Verification (three bullets):
+  - `/how-we-test/` and `/newsletter/` both return 200 and render through their
+    own templates rather than through `page.php`.
+  - The Tagline is non-empty and appears in the homepage title.
+  - A `cat-category` archive URL returns 200 with the term name rendered.
+
+### Phase 15e (execution-assist): The three navigation menus exist and are assigned.
+- Status: **complete 2026-08-14.** Header nav confirmed rendering with Reviews,
+  Best, How we test and Newsletter as real menu items.
+- Taken while waiting on content writing, which is the right kind of work for
+  that gap: no code, no dependency on published reviews.
+- `theme/inc/setup.php` registers `primary`, `footer` and `legal`, and all three
+  call sites are guarded by `has_nav_menu()`. So the header had **no navigation
+  at all** until now, and the footer had no link columns. Nothing was broken;
+  nothing had ever been assigned.
+- Information architecture: primary for sections, legal for documents, footer
+  for the content-bearing subset. Archive links (`/reviews/`, `/best/`) go in as
+  custom links because a CPT archive has no post ID; pages go in via
+  `menu item add-post` so an item follows its page if the slug changes.
+- **Category links deliberately left out of the footer.** All five archives are
+  empty and noindexed by the Rank Math setting from Phase 16, so sitewide links
+  to them would be sitewide links to nothing. Revisit once Phase 15d lands.
+- Not added to `provision.sh`, per the infrastructure-versus-content line: menus
+  are content and are covered by the UpdraftPlus backup. Duplicating them into
+  the provisioner would give the restore a second source of truth to fight.
+
+### Phase 15d: The first reviews and a roundup are published.
+- Status: **planned 2026-08-14.** Blocked on 15c.
+- **This phase is Casey's writing, and that is a boundary rather than a
+  preference.** The site's premise is that a product lived in a real house with
+  real cats before anything was said about it, and `page-how-we-test.php`
+  renders that claim from code so it cannot be edited away. A review the agent
+  invented would make that claim false on the page that exists to guarantee it,
+  and PLAN.md names trust as the thing a review site lives or dies on.
+- What the agent can do: check drafts against the field contract, edit for
+  structure and length, and verify rendering. Not supply product experience.
+- Ordering constraint: the roundup comes after the reviews it points at, because
+  `e4c_picks` stores a post object rather than a copied title.
+- PLAN.md's target is ten reviews before further engineering. One review and one
+  roundup is enough to unblock Phase 15b; the rest can continue after launch.
+- Content discipline carried from PLAN.md: no quoted prices that go stale in the
+  way Amazon Associates' agreement prohibits, and no `aggregateRating`.
+
+### Phase 15b: The site passes a full pre-launch QA sweep on real content.
 - Status: planned 2026-08-14. **The last phase before Phase 17 flips the site
   live.** Split from Phase 15 rather than folded into it, because "publish the
   content" and "prove the whole site is sound" are two deliverables and the
@@ -1010,9 +1106,11 @@ are execution-assist and each stays open across turns.
   becomes its own phase rather than being fixed inline.
 
 ### Phase 16 (execution-assist): Consent, analytics and SEO are configured.
-- Status: **in progress, opened 2026-08-14.** Execution-assist, so it stays open
-  across turns until Casey's evidence lands. **Runs before Phase 15**,
-  resequenced 2026-08-14.
+- Status: **complete 2026-08-14**, with two verifications deferred for reasons
+  that are ordering constraints rather than failures: the JSON-LD count moves to
+  Phase 15b (nothing was published, so the check had no target) and the sitemap
+  taxonomy check moves to Phase 17 (Rank Math suppresses the sitemap entirely
+  while `blog_public` is `0`). **Ran before Phase 15**, resequenced 2026-08-14.
 - Four plugin-level conflicts identified before starting, each of which fails
   silently rather than loudly, and each of which is why this is a walkthrough
   rather than "run the wizard":
@@ -1260,9 +1358,10 @@ are execution-assist and each stays open across turns.
   re-processing every uploaded original.
 
 ### Phase 24: The theme renders an arbitrary page in full.
-- Status: **complete 2026-08-14** in the repo, verified in the container at 64
-  checks. The live site still needs the deploy, which is a `git pull` on the
-  host. Found while verifying the published Privacy Policy.
+- Status: **complete 2026-08-14, both halves.** Verified in the container at 64
+  checks, then deployed and verified live: `/privacy-policy/` returns 12 `<h2>`
+  (eleven from the document, one from Complianz), one `href="/cookie-policy-ca/"`,
+  and 1 `<table>`. Found while verifying the published Privacy Policy.
 - **The bug.** `theme/` has no `page.php`. WordPress walks the hierarchy
   (`page-{slug}`, `page-{id}`, `page`, `singular`, `index`) and lands on
   `index.php`, which loops results through `template-parts/card-post.php`. That
@@ -1302,8 +1401,50 @@ are execution-assist and each stays open across turns.
 - Deferred: any styling of the generic page. It inherits `e4c-article`, which is
   what the other two templates use, and a bespoke look is not a launch concern.
 
+### Phase 25: The provisioner enables auto-updates, so a rebuilt host is not silently less safe.
+- Status: **complete 2026-08-14.** Harness at 66 checks, up from 64.
+- Found by Casey asking whether the build scripts reproduced everything set by
+  hand. They did not: auto-updates were enabled on the live host in Phase 17's
+  hygiene work and existed nowhere in `provision.sh`, so any rebuild would have
+  come up with them off. Silent, and exactly the class of drift `plugins.txt`
+  and `themes.txt` were created to close.
+- **The trap, and why the `|| true` is not hiding a failure.**
+  `wp plugin auto-updates enable --all` counts already-enabled plugins as
+  failures and exits non-zero. Enabling one new plugin into a fully-enabled set
+  prints `Error: Only enabled 1 of 12 plugin auto-updates` and returns 1. Under
+  `set -euo pipefail` that would abort every re-run, including the harness's
+  second pass, which is the run that proves idempotence. The exit code cannot
+  distinguish that from a real failure, so it is ignored, stderr is left
+  visible, and the **end state is asserted in `verify.sh`** instead. That is a
+  stronger check than the exit code would have been.
+- Deliberately not added: `site_icon` and `custom_logo`. Absent from the
+  provisioner by design, because `e4c_fallback_site_icon()` and
+  `e4c_brand_logo()`'s bundled tier brand a fresh host without them. Verified as
+  a non-gap rather than assumed.
+- Files touched: `scripts/provision.sh`, `scripts/test-provision/verify.sh`.
+
 ## Phase reports
 <!-- pasted at Stage 5, newest first -->
+
+### Phase 25, 2026-08-14
+
+**Changed.** An auto-updates block in `scripts/provision.sh` after the plugin
+loop, and two assertions in `scripts/test-provision/verify.sh`.
+
+**Tested.** `bash scripts/test-provision/run.sh`, exit 0, `ALL CHECKS PASSED`,
+66 checks against the previous 64.
+
+**Fails-first, without a separate run.** The command shape was validated against
+the pre-change image before the checks were written, and it returned `disabled`
+for both plugins and themes. The same assertions therefore could not have passed
+before the provisioner change and do pass after it.
+
+**Audit conclusion.** Auto-updates were the only genuine gap between the live
+host's hand-set state and what the provisioner reproduces. Everything else set
+by hand since the last run is either already in `plugins.txt` and `themes.txt`
+(Secure Custom Fields, the deleted themes), covered by a theme-level fallback
+(site icon, logo), or content protected by the UpdraftPlus backup rather than by
+code (tagline, terms, pages, menus).
 
 ### Phase 24, 2026-08-14
 

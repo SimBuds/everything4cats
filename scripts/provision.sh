@@ -561,6 +561,30 @@ while read -r line <&3; do
 	fi
 done 3< "$REPO_DIR/scripts/plugins.txt"
 
+log "Auto-updates"
+# Outdated plugins are the actual compromise route for a WordPress host, not
+# weak passwords and not core itself. Every week a known vulnerability sits
+# unpatched is a week the site is findable by a scanner reading version numbers
+# off the page, and manual updating loses to that because it depends on someone
+# remembering.
+#
+# This was gated on Phase 13 proving a restore, deliberately: unattended updates
+# with no backup is the one combination with no recovery path. That gate is now
+# met, so a fresh host should come up with them on rather than waiting for
+# someone to repeat the step by hand.
+#
+# The `|| true` is load-bearing and is not hiding a failure. These commands
+# count plugins that are *already* enabled as failures and exit non-zero:
+# enabling one new plugin into a fully-enabled set prints
+# "Error: Only enabled 1 of 12 plugin auto-updates" and returns 1. Under
+# `set -euo pipefail` that would abort every re-run of this script, including
+# the harness's second pass. stderr is left visible rather than suppressed, so
+# a genuine failure still prints, and the end state is asserted by
+# scripts/test-provision/verify.sh rather than inferred from an exit code that
+# cannot distinguish the two cases.
+wp_run plugin auto-updates enable --all >/dev/null || true
+wp_run theme auto-updates enable --all >/dev/null || true
+
 # --- hardening --------------------------------------------------------------
 
 log "Swap"

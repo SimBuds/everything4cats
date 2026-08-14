@@ -78,6 +78,19 @@ while read -r line <&3; do
 	ck "$slug" "$want_status" "${got:-MISSING}"
 done 3< /repo/scripts/plugins.txt
 
+# Auto-updates, asserted here rather than trusted from provision.sh's exit code.
+# `wp plugin auto-updates enable --all` counts already-enabled plugins as
+# failures and returns non-zero, so the provisioner has to ignore its exit code
+# and something else has to check the end state. This is that something.
+#
+# sort -u collapses the per-item statuses, so the expected value is the single
+# word "enabled". Anything mixed prints "disabled enabled" and fails loudly with
+# the actual state visible.
+ck "plugin auto-updates all enabled" "enabled" \
+	"$(W plugin auto-updates status --all --field=status | sort -u | tr '\n' ' ' | xargs)"
+ck "theme auto-updates all enabled" "enabled" \
+	"$(W theme auto-updates status --all --field=status | sort -u | tr '\n' ' ' | xargs)"
+
 echo "== Themes (expected from scripts/themes.txt) =="
 # Driven from the same file and the same grammar as the provisioner, for the
 # reason the plugin loop above is: a check that hardcodes the theme names would
