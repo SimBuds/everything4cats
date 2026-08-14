@@ -1423,8 +1423,117 @@ are execution-assist and each stays open across turns.
   a non-gap rather than assumed.
 - Files touched: `scripts/provision.sh`, `scripts/test-provision/verify.sh`.
 
+### Phase 26a: A browsable staging site runs from the image the harness already built.
+- Status: **complete 2026-08-14.**
+- Asked for after question 21. The goal is testing theme and plugin changes
+  before they reach the live host, and explicitly not hot reload.
+- **Reuses `e4c-provision-test` rather than adding a Dockerfile.** The image is
+  a host that `provision.sh` built, re-ran against, and that `verify.sh`
+  checked, so the staging site is byte-identical to what passed verification. A
+  second Dockerfile would be a second description of the same host and would
+  drift from the first one the week nobody looked.
+- **Live edits fall out of something that already existed.** `provision.sh`
+  symlinks the theme and every repo plugin from the checkout rather than copying
+  them, so `up.sh` bind-mounts the working tree read-only over `/repo/theme` and
+  `/repo/plugins`, putting the editor on the far end of the symlink WordPress
+  already follows. No rebuild, no copy step, and **no change to
+  `provision.sh`**.
+- Ephemeral by choice, per Casey on 2026-08-14. No volumes, so every run starts
+  from the same pristine site. A named volume would let staging drift from what
+  provisioning produces, which is the exact failure the harness exists to catch.
+- Port 80 by default so the stored `siteurl` of `http://e4c.test` works
+  untouched; `PORT=` rewrites `siteurl` and `home` after start.
+- Files touched: `scripts/staging/up.sh`, `scripts/staging/down.sh`,
+  `README.md`.
+
+### Phase 26b: An UpdraftPlus backup restores into staging, so templates render against real content.
+- Status: **complete 2026-08-14.**
+- Casey chose a backup restore over a WP-CLI fixture script on 2026-08-14. It
+  tests real content and real option state including the serialised blobs
+  Complianz and Rank Math keep, at the cost of a manual step per session.
+- **Database and uploads only.** UpdraftPlus also writes plugins, themes and
+  others archives. Restoring those would land production's static copies on top
+  of the symlinks and destroy 26a's live-edit behaviour. What is wanted from
+  production is its content and settings, not its code.
+- `wp search-replace`, never `sed`: it walks serialised values and re-lengths
+  them. Only the scheme+host forms are replaced, never the bare domain, because
+  the bare form appears in the contact address on How we test and rewriting it
+  would corrupt real content.
+- **Reading `siteurl` after import doubles as the table-prefix check.**
+  `provision.sh` sets no prefix so both sides use the default, but a mismatch
+  would leave `wp-config.php` pointing at tables the dump never created and the
+  site would half-work rather than fail. That read cannot succeed unless prefix,
+  import and credentials are all correct, and it is the value the rewrite needs
+  anyway.
+- The dump is production data. The script prints no row contents, and
+  `.gitignore` already covers `*.gz`, `*.zip` and `backup_*`.
+- Files touched: `scripts/staging/restore.sh`, `README.md`.
+
 ## Phase reports
 <!-- pasted at Stage 5, newest first -->
+
+### Phase 26a and 26b, 2026-08-14
+
+**Changed.** Three new scripts under `scripts/staging/` and a `## Staging`
+section in `README.md`. Nothing under `scripts/provision.sh`,
+`scripts/test-provision/` or `theme/` was touched, which was the design goal
+rather than a happy accident: staging is assembled entirely out of behaviour the
+provisioner already had.
+
+**Two real bugs found and fixed before hand-off**, both the same `set -e` trap.
+`[ -x "$f" ] && "$f" start` inside a loop body and
+`[ -d ... ] && SRC=...` both return non-zero on the false branch, which under
+`set -e` aborts the script. In `up.sh` that would have killed the container
+before Apache started, every time the PHP-FPM glob missed. In `restore.sh` it
+would have aborted the uploads restore whenever the archive was rooted at its
+contents rather than at `uploads/`, which is the more common UpdraftPlus
+layout. Both rewritten as `if`/`fi`.
+
+**Not executed by the agent.** `bash -n` passed on all three and `shellcheck` is
+not installed on this machine. Running them starts containers and services,
+which is outside the agent's command boundary, so they were handed over reasoned
+and syntax-checked rather than proven. Casey ran them. **Both of the first two
+runs failed**, and the record of that is below because the second failure is a
+property of the harness image rather than of these scripts.
+
+**Run 1 failed, and the error message lied about it.** `mysqld` did not start,
+and `set -e` inside the container command meant the failure killed the
+container, so `restore.sh` correctly refused to import into nothing. The failure
+path then printed "Container left running for inspection" about a container that
+had already exited, promising evidence that had been destroyed. Fixed by
+dropping `set -e` from the container command entirely: a service that fails to
+start must not take the logs down with it. That fix is the only reason run 2
+produced a diagnosis.
+
+**Run 2 gave the cause, which is a real property of `e4c-provision-test`.**
+
+```
+[ERROR] [MY-010259] Another process with pid 189 is using unix socket file.
+[ERROR] [MY-010268] Unable to setup unix socket lock file.
+[ERROR] [MY-010119] Aborting
+```
+
+`docker build` commits each `RUN` layer by killing the container, so `mysqld` is
+never shut down cleanly and `/var/run/mysqld/*.sock.lock` plus its pid file are
+baked into the image still holding PIDs from the build. Every `docker run`
+inherits a lock claiming PID 189 owns the socket. Two details confirmed this
+rather than leaving it a guess: the lock files carry build-time timestamps, and
+`XA crash recovery finished` in the same log proves InnoDB was healthy, so the
+data was never implicated.
+
+Fixed in `up.sh` by removing `*.sock.lock` and `*.pid` before starting mysql.
+Runtime artefacts only, recreated on every start, with `/var/lib/mysql` left
+alone. Deliberately fixed at container start rather than in the harness
+Dockerfile: startup is `up.sh`'s job, and a Dockerfile change would have forced
+a multi-minute rebuild and edited the harness from inside another phase.
+
+**Run 3 came up in about three seconds.**
+
+**Known rough edges, stated rather than hidden.** Port 80 may already be in use,
+in which case `PORT=8080 bash scripts/staging/up.sh` is the escape hatch. The
+`/etc/hosts` line needs root and is left to Casey. Restoring is per session
+because the container is ephemeral, which is the cost Casey accepted when
+choosing ephemeral over a named volume.
 
 ### Phase 25, 2026-08-14
 

@@ -88,6 +88,56 @@ passing. Those steps are proven on the real host only.
 
 ---
 
+## Staging
+
+A browsable copy of the site for trying theme and plugin changes before they
+reach the live host.
+
+```bash
+# ON HOST, once
+echo '127.0.0.1 e4c.test' | sudo tee -a /etc/hosts
+
+# ON HOST
+bash scripts/staging/up.sh          # http://e4c.test/
+bash scripts/staging/restore.sh     # load an UpdraftPlus backup into it
+bash scripts/staging/down.sh
+```
+
+Runs the image the harness above already built, so what you click around in is
+byte-identical to what passed verification. There is no second Dockerfile to
+drift.
+
+**Theme and plugin edits are live.** `provision.sh` symlinks the theme and every
+repo plugin out of the checkout rather than copying them, so `up.sh` bind-mounts
+the working tree onto the far end of those symlinks. Save a file, refresh the
+browser. Read-only, so the container cannot write back into the tree.
+
+**It is ephemeral.** No volumes. The database lives in an image layer, so every
+`up.sh` starts from the same pristine site and `down.sh` throws away whatever
+happened. That is right for testing a change and wrong for drafting content:
+real content comes from `restore.sh`, which is repeatable exactly because the
+starting point never varies.
+
+**`restore.sh` loads the database and uploads only**, never the plugins or
+themes archives UpdraftPlus also writes. Those would land production's static
+copies on top of the symlinks and destroy the live-edit behaviour. What is
+wanted from production is its content and settings, not its code.
+
+Backup sets live in `backups/` off the repository root, and `restore.sh` finds
+the set on its own when there is exactly one. It refuses to guess when there are
+several. `BACKUP_DIR=` overrides the location.
+
+The dump is production data: real accounts, addresses and password hashes. It
+belongs on a local container and nowhere else. `.gitignore` already covers
+`*.gz`, `*.zip` and `backup_*`, and those patterns match at any depth, so
+`backups/` needs no rule of its own. The script prints no row contents.
+
+**What staging cannot prove:** TLS issuance, DNS, SES delivery, or anything
+Google must reach inward for, such as Search Console verification and sitemap
+submission. Those are launch-day steps on the real host.
+
+---
+
 ## Provisioning a server
 
 ```bash

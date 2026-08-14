@@ -136,9 +136,18 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-nav .current-menu-item > a, .e4c-nav .current-menu-parent > a { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
 .e4c-actions { flex: 1 1 160px; display: flex; align-items: center; justify-content: flex-end; gap: var(--e4c-gap-2); }
 
-/* The five nav links and both actions cannot share one row below this width,
-   so the links drop to their own centred row instead of the buttons breaking off. */
-@media (max-width: 1120px) {
+/* The nav links and both actions cannot share one row below this width, so the
+   links drop to their own centred row instead of the buttons breaking off.
+
+   Lowered from 1120px to 1000px on 2026-08-14. 1120px was calibrated against
+   the old controls, which were 44px tall with 18px of padding. The current ones
+   are 32px with 14px, and the row now needs roughly 905px of viewport: 180px of
+   logo, 371px of nav, 210px of buttons, 48px of column gaps and two 48px
+   gutters. 1120px was therefore breaking the header onto two rows across a
+   215px band where it fitted comfortably. 1000px keeps about 95px of slack for
+   the fact that those label widths are estimated from character counts rather
+   than measured, and for a fifth nav item later. */
+@media (max-width: 1000px) {
 	.e4c-nav { order: 3; flex: 1 1 100%; }
 	.e4c-brand { flex: 1 1 auto; }
 	.e4c-actions { flex: 0 0 auto; }
@@ -152,7 +161,14 @@ img, svg, video { max-width: 100%; height: auto; }
    free to shrink further if a narrower screen or a longer label needs it. */
 @media (max-width: 900px) {
 	.e4c-header__inner { column-gap: var(--e4c-gap-3); }
-	.e4c-brand { flex: 0 1 auto; min-width: 0; }
+	/* min-width only. The 1120px block above already sets flex: 1 1 auto and
+	   still applies here, and the brand must keep flex-grow: 1 so it absorbs
+	   the free space and holds the buttons against the right edge. Setting
+	   flex: 0 1 auto here left nothing growing, so justify-content: center
+	   floated the logo and buttons together in the middle of the row.
+	   min-width: 0 is what actually lets the logo shrink; flex-grow has no
+	   say in that. */
+	.e4c-brand { min-width: 0; }
 	.e4c-brand img { max-height: clamp(26px, 7vw, 42px); }
 	.e4c-brand__text { font-size: var(--wp--preset--font-size--title); }
 	.e4c-actions { gap: var(--e4c-gap-1); --e4c-control-pad-x-sm: 11px; }
