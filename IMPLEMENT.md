@@ -1,11 +1,26 @@
 # IMPLEMENT.md
 
 ## Current state
+<!-- The only current-state snapshot in the repository. PLAN.md and README.md
+     both point here rather than keeping their own, because two snapshots
+     guarantee one is wrong. Both were carrying stale ones until 2026-08-14. -->
 - Active phase: none.
-- Last completed phase: Phase 15c. The site is live at https://everything4cats.ca
-- Phase status roll-call: **1 to 16 complete**, including 8, 8b, 15a and 20 and
-  24. Phase 12 is complete technically and still sandboxed pending AWS
-  production access.
+- Last completed phase: Phase 26b, 2026-08-14. The site is live at
+  https://everything4cats.ca
+- Phase status roll-call: **1 to 16 complete**, including 8, 8b, 15a, and
+  **20, 24, 25, 26a, 26b**. Phase 12 is complete technically and still
+  sandboxed pending AWS production access. Phase 19 was folded into the
+  documentation sweep on 2026-08-14 rather than run as its own phase.
+- **There is now a staging site.** `scripts/staging/up.sh` serves the harness
+  image at http://e4c.test with `theme/` and `plugins/` bind-mounted live, and
+  `restore.sh` loads an UpdraftPlus set into it. Until 2026-08-14 there was no
+  way to look at a change before it reached production, and four theme changes
+  that day were verified by arithmetic rather than by eye as a result.
+- **Theme work landed 2026-08-14 and is not phased**, because it was
+  small-and-visual rather than planned: control sizes normalised onto two
+  tokens, a 4px gap ladder replacing thirteen hand-picked spacing values, all
+  inline styles removed from templates, the footer column and header
+  breakpoints recalibrated. Recorded in the git history rather than here.
 - **Remaining before launch: Phase 15d** (Casey's reviews and a roundup), then
   **15b** (QA sweep), then **17** (the flip). Nothing else blocks, and 15d is
   writing rather than engineering.
@@ -1239,8 +1254,14 @@ are execution-assist and each stays open across turns.
   own diff and its own test.
 
 ### Phase 19: README's opening sections describe the repo as it was before the theme landed.
-- Status: planned 2026-08-13, noticed while editing `README.md` during Phase 14
-  and deliberately not fixed there, per no-piggybacking.
+- Status: **complete 2026-08-14**, folded into the documentation sweep rather
+  than run on its own. Planned 2026-08-13, noticed while editing `README.md`
+  during Phase 14 and deliberately not fixed there, per no-piggybacking. The
+  sweep was the right place for it in the end: it was the same class of problem
+  as the stale snapshots in `PLAN.md`, and fixing one file's staleness while
+  leaving the others would have been the arbitrary split.
+- Both bugs fixed, plus a third the sweep turned up: the design section claimed
+  `figma/` "is the exception and stays", and the directory does not exist.
 - Two concrete staleness bugs, both above the fold and both in the first thing
   a reader sees. The `## Layout` block lists `compose.yaml`, `docker/`,
   `plugins/e4c-compliance/` and `scripts/`, and omits `theme/` and
@@ -1528,6 +1549,47 @@ Dockerfile: startup is `up.sh`'s job, and a Dockerfile change would have forced
 a multi-minute rebuild and edited the harness from inside another phase.
 
 **Run 3 came up in about three seconds.**
+
+**The first restore then failed silently, which is worse than failing loudly.**
+It printed `Success` and `Restored.` while having done nothing:
+
+```
+==> Rewriting URLs: e4c.test -> e4c.test
+Success: Made 0 replacements.
+```
+
+`provision.sh` writes `WP_HOME` and `WP_SITEURL` into `wp-config.php` as
+**constants**, and a constant overrides the stored option. `wp option get
+siteurl` therefore returns `e4c.test` no matter what was imported, so
+`restore.sh` searched the database for the value it was about to write, matched
+nothing, and left every production URL in the content. The same mistake was in
+`up.sh`, which used `wp option update` for its port handling: those writes would
+have been overridden by the constants and silently ignored.
+
+The lesson is general and worth carrying: **on this install the constants in
+`wp-config.php` are the source of truth for site URL, not the options table.**
+Read the database with `wp db query` when the database is what you mean, and
+write with `wp config set` when the served value is what you mean. `wp option
+get siteurl` answers a third question and is the wrong tool for both.
+
+That bug also destroyed the phase's only real check. The old table-prefix guard
+claimed to prove the import landed and could not have: the constant satisfied it
+whether or not a single table imported. It now queries `<prefix>options`
+directly, which cannot succeed unless prefix, import and credentials are all
+correct.
+
+**A second bug surfaced while tracing it.** The constants are pinned to `https`,
+correct for the real host where TLS terminates in front of Apache, but staging
+serves plain http with nothing on 443. The front page still answers, which is
+exactly why the harness never caught it: `verify.sh` curls paths directly and
+never follows a generated link. In a browser every internal link was
+unreachable, which presented as "menus are not set up". `up.sh` now repins both
+constants to what is actually served.
+
+**Verified working 2026-08-14.** Database and uploads restored, URLs rewritten
+to `http://e4c.test`, 4 posts, the custom theme active, 3 menus imported with
+`primary`, `footer` and `legal` all assigned. The menus had imported correctly
+the whole time.
 
 **Known rough edges, stated rather than hidden.** Port 80 may already be in use,
 in which case `PORT=8080 bash scripts/staging/up.sh` is the escape hatch. The
@@ -1931,3 +1993,1081 @@ real and is recorded here rather than absorbed silently.
    come from the console section instead, where they cannot be silently empty.
 
 **Deferred.** Nothing from these phases. Phase 3 is unchanged and unstarted.
+
+---
+
+# Build log
+
+Moved verbatim out of `README.md` on 2026-08-14, where it had grown to 78% of a
+file meant to be a developer reference. This is the chronological record of what
+was done to the live host and why. It complements the phase reports above rather
+than duplicating them: the phases are repository work, these steps are the
+server.
+
+Kept in this file, newest last.
+
+### 2026-08-10 — repository established
+
+The container, `provision.sh` and its test harness, and the plugin baseline
+were written and the compliance layer was built as a standalone plugin rather
+than as theme code, so that a theme change cannot switch off a legal
+obligation.
+
+`provision.sh` does not assume a theme exists. It reads `THEME_DIR` and skips
+loudly when unset, so the stack can be provisioned before the base theme lands.
+
+### 2026-08-10 — hosting decided, docs retargeted
+
+Hosting settled on AWS Lightsail, OS-only Ubuntu 24.04 blueprint, and
+`everything4cats.ca` registered. Docker was reclassified from a deployment
+avenue to a test harness, which is the role it actually serves: proving
+`provision.sh` twice before the script touches a paid host.
+
+`provision.sh` and `scripts/inventory.sh` were retargeted from an
+undecided-provider state to Lightsail, and four cross-references from code into
+`PLAN.md` and `AGENTS.md` that no longer resolved were replaced with the facts
+they had been fetching, so they cannot dangle again.
+
+EC2 was briefly chosen and then reversed the same day, after the two were priced
+against each other. The numbers are in `PLAN.md` under *Decided* so the
+comparison is not run a third time.
+
+#### Step 1 — Lightsail instance created and baselined ✅
+
+**Goal:** a bare Ubuntu 24.04 host in Canada (Central), reachable over SSH, with
+a stable address and the web ports open, and its starting state recorded.
+
+**Why it matters:** every later change is read against this baseline. Without a
+record of what the image shipped, a problem three steps from now cannot be told
+apart from something that was always there. The static IP matters for a reason
+that is invisible today: the default address is released on stop and start, and
+that failure surfaces weeks later as a dead site and a TLS renewal that cannot
+validate.
+
+**Commands:**
+
+```bash
+# ON HOST
+ssh-keygen -t ed25519 -C "everything4cats" -f ~/.ssh/everything4cats
+```
+
+```bash
+# ON HOST
+scp -i ~/.ssh/everything4cats scripts/inventory.sh ubuntu@<static-ip>:/tmp/inventory.sh \
+  && ssh -i ~/.ssh/everything4cats ubuntu@<static-ip> 'sudo bash /tmp/inventory.sh'
+```
+
+The key pair was generated locally and only the public half was uploaded, so the
+private key has never left the workstation. Console work (instance creation,
+static IP, firewall) is browser-only and was done by hand.
+
+**Verify:**
+
+- Ubuntu 24.04.4 LTS, x86-64, 2 vCPU.
+- `1.9Gi` memory and a `58G` root filesystem, which together pin the instance to
+  the 2 GB plan. The next tier down would have reported roughly 1 GB and 40 G,
+  so the plan is confirmed from the shell rather than from the console.
+- `Hardware Model: t3.small`, confirming Lightsail runs on EC2 underneath. This
+  is the same hardware class that costs more on raw EC2 once the volume and the
+  public address are billed separately.
+- apache2, nginx, php, php-fpm, mysql, mariadb, wp, docker and certbot all
+  absent. Nothing listening on 80 or 443. The host is genuinely clean, so the
+  provisioner's do-not-clobber guard will pass without warnings.
+- `passwordauthentication no` and pubkey-only SSH as delivered.
+- `Swap: 0B`, ufw `inactive`, fail2ban `not installed`. These are the three
+  steps the container could only skip, and they will actually execute here.
+- Static IP attached, ports 80 and 443 open for IPv4 and IPv6, region Canada
+  (Central), all confirmed in the console.
+
+**Q&A:**
+
+- *Lightsail or EC2?* Settled on Lightsail, after a reversal. At 2 GB the
+  Lightsail plan is $12 flat against roughly $21 on EC2 once the volume and the
+  public IPv4 address are added, and it includes 3 TB of transfer where EC2
+  includes 100 GB. Transfer was the deciding line, because it is the only cost
+  here that scales with success rather than with time.
+- *Own SSH key or a downloaded one?* Own key, uploaded. The private half never
+  leaves the workstation, and there is no `.pem` to lose. This also matches the
+  existing per-project key convention on the workstation.
+- *Automatic snapshots?* Not enabled. Deliberate for now, since there is no data
+  to lose. It must be turned on before any real content exists, and it is
+  tracked as its own phase rather than left as a note here.
+- *Monthly cost recorded?* No. The plan price is $12 and is treated as the
+  working figure for the runway. Confirm against the first real bill.
+
+#### Step 2 — DNS pointed at the instance ✅
+
+**Goal:** `everything4cats.ca` and `www` both resolve to the instance, before
+WordPress is installed rather than after.
+
+**Why it matters:** provisioning against a bare IP and moving to the domain
+later means a database-wide URL migration, because WordPress stores absolute
+URLs. Pointing DNS first makes that migration unnecessary. Propagation also
+takes time that is free to spend now and expensive to spend later, and certbot
+cannot issue a certificate until both names already resolve.
+
+**Commands:** records created by hand at Namecheap, on their BasicDNS
+nameservers. An `A` on the apex to the static IP, and a `CNAME` on `www` to the
+apex. Verified with a DNS-over-HTTPS query against two public resolvers, which
+bypasses the local cache and shows what Let's Encrypt will see:
+
+```bash
+# ON HOST
+curl -sS -H 'accept: application/dns-json' \
+  "https://cloudflare-dns.com/dns-query?name=everything4cats.ca&type=A"
+curl -sS "https://dns.google/resolve?name=www.everything4cats.ca&type=A"
+```
+
+**Verify:** four checks, two names against two independent resolvers, all
+`Status: 0`. The apex returns a single A record with `TTL 300`. `www` returns a
+type-5 CNAME to `everything4cats.ca.` followed by the same A record, which is
+the shape certbot needs to validate both names from one request. Google's
+response named the authoritative server as `dns2.registrar-servers.com`,
+confirming the zone is served by Namecheap BasicDNS rather than by a leftover
+custom or web-hosting nameserver set. No parking record and no second A record
+appeared in any answer.
+
+**Q&A:**
+
+- *Two A records, or A plus CNAME?* A plus CNAME, which is what was built. A
+  single certificate still covers both names because certbot follows the CNAME.
+  The apex cannot itself be a CNAME, so this is the conventional shape.
+- *Why not `dig`?* It is not installed on the workstation, and neither is `nc`.
+  Two checks were handed over that failed on a missing tool and misreported the
+  cause as a DNS failure. The DNS-over-HTTPS check replaced them because it
+  needs only `curl` and `python3`, and it distinguishes a failed request from a
+  real negative answer.
+- *`resolvectl` returned an error, is that a problem?* No. `systemd-resolved`
+  is not running on the workstation, which is a local tooling gap and says
+  nothing about the zone. The external resolvers are the authority here.
+
+**Deferred:** TLS. Certbot runs after the site is serving, not before.
+
+#### Step 3 — WordPress provisioned on the server ✅
+
+**Goal:** run `provision.sh` on the Lightsail instance and get WordPress
+serving `everything4cats.ca`.
+
+**Why it matters:** this is the first time the provisioner has run anywhere
+other than a container, and the container could never execute three of its
+steps. Everything about the stack that had only ever been asserted was either
+confirmed here or was wrong here.
+
+**Commands:**
+
+```bash
+# ON SERVER
+sudo install -d -o ubuntu -g ubuntu -m 755 /srv/everything4cats
+git clone https://github.com/SimBuds/everything4cats.git /srv/everything4cats
+cd /srv/everything4cats
+
+sudo SITE_DOMAIN=everything4cats.ca SITE_TITLE='Everything4Cats' \
+     ADMIN_USER=casey ADMIN_EMAIL=<admin-email> \
+     bash scripts/provision.sh
+```
+
+The checkout lives in `/srv`, not in `/home/ubuntu`. Ubuntu creates the home
+directory mode `0750`, and `www-data` has to traverse the checkout to follow
+the theme symlink. That would not have failed here, because `THEME_DIR` is
+unset and no symlink is created for the theme. It would have failed when the
+theme landed, which is the expensive place to find it.
+
+The clone is anonymous over HTTPS from a public repository, so no deploy key,
+token, or credential of any kind exists on the server.
+
+**Verify:** the three steps that only ever reported `skipped` in the container
+all executed. `swapon --show` reports a 2 GB `/swapfile` with
+`vm.swappiness = 10`. `ufw` is active and, critically, allows `22/tcp` as well
+as `80,443/tcp` on both IPv4 and IPv6. `fail2ban` is active with the `sshd`
+jail loaded. `apache2`, `mysql`, `php8.3-fpm` and `fail2ban` all report
+`active`.
+
+`wp option get` returns `https://everything4cats.ca` for both `home` and
+`siteurl`, and `/%postname%/` for the permalink structure. `wp plugin list`
+matches `scripts/plugins.txt` exactly, with `wp-super-cache` and
+`google-site-kit` inactive as that file specifies. The compliance plugin is a
+symlink into `/srv/everything4cats/plugins/e4c-compliance` and is **active**,
+which is what proves the `/srv` placement works. Apache returned `200` locally
+with a `Link` header pointing at the site's REST route.
+
+**Q&A:**
+
+- *`wp rewrite flush` printed a warning about `.htaccess`. Is that a failure?*
+  No, and it is anticipated. The script checks for `RewriteEngine On`
+  afterwards and writes the rewrite block itself when WP-CLI declines to. The
+  file was verified to contain the full `BEGIN WordPress` block, owned by
+  `www-data`. Without it every URL except the home page would 404, and it would
+  look like a TLS problem rather than a rewrite problem.
+- *Does `WP_HOME=https` with no certificate cause a redirect loop?* No. It
+  changes the URLs WordPress generates, not the ones Apache accepts. The site
+  answered `200` over plain HTTP with https asset URLs in the body, which is
+  mixed content until certbot runs, not a loop.
+- *Was anything wrong?* One thing. `blog_public` was `1`, the WordPress install
+  default, leaving a fresh domain indexable while carrying only the sample post
+  and the default theme. Set to `0` immediately. It is flipped back to `1` at
+  launch, which is the last item in the plan's order of work and also what
+  gates the sitemaps.
+
+**Deferred:** TLS, and the remaining items the provisioner prints on exit:
+mail relay, backups, page cache, and narrowing SSH.
+
+#### Step 4 — TLS issued, site live ✅
+
+**Goal:** serve `everything4cats.ca` and `www` over HTTPS, with renewal proven
+rather than assumed.
+
+**Why it matters:** the provisioner pins `WP_HOME` and `WP_SITEURL` to `https`
+before a certificate exists, which is deliberate. It means no database-wide URL
+migration is ever needed, at the cost of a short window where the site emits
+https URLs it cannot yet serve. This step closes that window. A certificate
+also expires in ninety days, so an unproven renewal is a scheduled outage.
+
+**Commands:**
+
+```bash
+# ON SERVER
+sudo certbot --apache -d everything4cats.ca -d www.everything4cats.ca
+sudo certbot renew --dry-run
+```
+
+**Verify:** certificate issued for both names and deployed to a generated
+`everything4cats-le-ssl.conf`, expiring 2026-11-09. `certbot renew --dry-run`
+reported all simulated renewals succeeded, which is the part that matters,
+because the renewal timer was already installed with the package and only the
+dry run proves it can actually complete.
+
+Checked from a workstation rather than from the server:
+
+```bash
+# ON HOST
+curl -sS -D- https://everything4cats.ca -o /dev/null
+curl -sS -D- http://everything4cats.ca -o /dev/null
+curl -sS -o /dev/null -w '%{http_code}\n' https://everything4cats.ca/hello-world/
+```
+
+The apex returns `200`. `http://` returns `301` to `https://` from Apache. The
+`www` name returns `301` to the apex from WordPress, carrying
+`X-Redirect-By: WordPress`, which is the canonical redirect rather than a TLS
+failure: the handshake to `www` completed before the redirect was issued, so
+the certificate genuinely covers both names. `curl` validates the chain by
+default, so a silent `200` is itself the certificate check, and
+`ssl_verify_result` was confirmed as `0` from a second machine.
+
+`hello-world/` returns `200` and a nonexistent path returns `404`.
+
+**Q&A:**
+
+- *Two different 301s, is one of them wrong?* No. They come from different
+  layers and both are correct. Apache issues the http-to-https redirect that
+  certbot configured, identifiable by its `iso-8859-1` error-page content type.
+  WordPress issues the www-to-apex canonical redirect, identifiable by
+  `X-Redirect-By`.
+- *Was the `.htaccess` warning from Step 3 ever a real problem?* No, and this
+  is where that is finally settled. `hello-world/` returning `200` while a
+  missing path returns `404` can only happen if the rewrite rules are in force.
+  The provisioner's fallback had written them correctly.
+- *A CAA record was added, does it break renewal?* No. A CAA record pinning
+  `0 issue "letsencrypt.org"` was added at Namecheap after issuance, so that no
+  other certificate authority can issue for this domain. Public resolvers still
+  reported NODATA afterwards, which proved nothing either way: the zone's SOA
+  minimum is 3601 seconds, so an earlier query had cached the negative answer
+  for an hour. `certbot renew --dry-run` was used instead and succeeded. That is
+  definitive where a resolver query is not, because Let's Encrypt reads CAA from
+  the authoritative nameservers with no cache, and the staging environment it
+  dry-runs against enforces CAA exactly as production does. Re-run the dry run
+  after any future change to the CAA record, since a malformed one fails
+  silently and only at renewal.
+
+**Deferred:** the four items the provisioner still prints on exit, namely
+narrowing SSH, the mail relay, backups and snapshots, and the page cache. Plus
+the theme, the content, and flipping `blog_public` back to `1` at launch.
+
+#### Step 5 — SSH verified key-only ✅
+
+**Goal:** close item 5 of the provisioner's exit list by proving SSH cannot be
+brute-forced. No change was made, because the Ubuntu cloud image already
+shipped the required state.
+
+**Why it matters:** item 5 offers two routes, restricting the source address in
+the Lightsail firewall, or key-only authentication plus fail2ban. The source
+restriction was planned first and then rejected, because this account connects
+through a VPN whose exit address rotates, so a single-address rule would cause
+routine self-lockout.
+
+That is not a weakening. Source restriction is defence in depth and was only
+ever buying quieter logs and one less reachable service. The boundary is
+key-only authentication: with `PasswordAuthentication no` in force, an attacker
+who reaches port 22 has nothing to guess without the private key. `fail2ban` was
+already verified running in Step 3 and covers the log-noise half.
+
+Two details make this check trustworthy rather than decorative:
+
+- **`sshd -T`, not `/etc/ssh/sshd_config`.** Ubuntu cloud images drop overrides
+  into `/etc/ssh/sshd_config.d/*.conf`, so the main file can state one thing
+  while the running daemon does another. `sshd -T` resolves the `Include`
+  directives and prints what is actually in force.
+- **`KbdInteractiveAuthentication` matters as much as `PasswordAuthentication`.**
+  With it enabled alongside `UsePAM yes`, PAM can still complete a
+  password-equivalent exchange even though password authentication reads as
+  disabled. A host can look locked down on the first directive and not be.
+
+**Commands:**
+
+```bash
+# ON SERVER
+sudo sshd -T | grep -iE '^(port|permitrootlogin|passwordauthentication|pubkeyauthentication|permitemptypasswords|kbdinteractiveauthentication|usepam) '
+```
+
+**Verify:** all seven directives returned the required values.
+
+```
+port 22
+usepam yes
+permitrootlogin without-password
+pubkeyauthentication yes
+passwordauthentication no
+kbdinteractiveauthentication no
+permitemptypasswords no
+```
+
+`without-password` is the legacy spelling of `prohibit-password` and has
+identical behaviour, so root can only ever authenticate by key. Port 22 stays
+open at the Lightsail firewall deliberately, which the provisioner's own item 5
+sanctions as the alternative to source restriction.
+
+**Q&A:**
+
+- *Why not restrict the source address anyway, as a second layer?* Because the
+  exit address rotates behind a VPN, so the rule would need editing on most
+  reconnects and would be reverted in frustration rather than maintained. If the
+  VPN ever offers a dedicated or static exit address, the restriction becomes
+  practical and goes on top of key-only auth rather than instead of it.
+- *Is leaving port 22 open to the internet a real exposure?* Not a meaningful
+  one here. Password authentication is off, so the only credential that works is
+  a private key held on one machine. What remains is log noise from automated
+  scanners, which is what fail2ban is for. Millions of servers run exactly this
+  way.
+- *Should `PermitRootLogin` be tightened from `without-password` to `no`?*
+  Marginal. Root login already requires a key, and Ubuntu cloud images install a
+  forced-command entry in root's `authorized_keys` that refuses the session and
+  prints a message directing the user to the `ubuntu` account. Tightening it is
+  a one-line change with close to zero practical gain, so it was left alone
+  rather than changed for the sake of a visible edit.
+
+#### Step 6 — xmlrpc.php refused ✅
+
+**Goal:** make `xmlrpc.php` return 403 on every vhost, closing the
+`system.multicall` amplification route.
+
+**Why it matters:** measured on this stack before the change, `GET
+/xmlrpc.php` returned `405` and `POST /xmlrpc.php` returned `200`, answering
+`system.listMethods` with `system.multicall` and `pingback.ping` advertised.
+The `405` is the trap: it reads like a refusal while the endpoint is fully live,
+so a check that only issued a GET would have reported this closed.
+
+`system.multicall` carries many method calls inside a single HTTP request, so
+hundreds of password attempts arrive as one request. That is precisely what a
+login throttler counting requests cannot see, and it is why
+`limit-login-attempts-reloaded` and fail2ban are the wrong layer for this.
+
+Two design decisions, both recorded because both are easy to get wrong:
+
+- **Server scope, not the vhost.** `provision.sh` manages only
+  `sites-available/everything4cats.conf`, the port 80 vhost. Certbot generated
+  `everything4cats-le-ssl.conf` for 443 and the repo does not manage it. This
+  site serves HTTPS and redirects all HTTP to it, so a `<Files>` block in the
+  managed vhost would have guarded the one path nobody uses while
+  `https://everything4cats.ca/xmlrpc.php` stayed open. A fragment in
+  `conf-available/` applies to every vhost, including the one certbot writes,
+  and survives certbot regenerating it.
+- **Apache, not a WordPress filter.** `add_filter( 'xmlrpc_enabled',
+  '__return_false' )` still boots PHP and WordPress for every attempt, so the
+  amplification still costs the server, and that filter governs only the
+  authenticated methods. Apache refuses before PHP starts, and no plugin
+  setting can switch it back on.
+
+**Commands:**
+
+```bash
+# ON SERVER
+git -C /srv/everything4cats pull
+sudo install -m 0644 /srv/everything4cats/docker/e4c-xmlrpc.conf \
+  /etc/apache2/conf-available/e4c-xmlrpc.conf
+sudo a2enconf e4c-xmlrpc
+sudo apache2ctl configtest
+sudo systemctl reload apache2
+```
+
+**Verify:** checked over HTTPS from a workstation, which is the path that was
+actually exposed.
+
+```bash
+# ON HOST
+curl -s -o /dev/null -w 'GET  xmlrpc  %{http_code}\n' https://everything4cats.ca/xmlrpc.php
+curl -s -o /dev/null -w 'POST xmlrpc  %{http_code}\n' -X POST \
+  -d '<methodCall><methodName>system.listMethods</methodName></methodCall>' \
+  https://everything4cats.ca/xmlrpc.php
+curl -s -o /dev/null -w 'GET  /       %{http_code}\n' https://everything4cats.ca/
+```
+
+```
+GET  xmlrpc  403
+POST xmlrpc  403
+GET  /       200
+```
+
+The home page check is not padding. `<Files "xmlrpc.php">` at server scope
+applies to every vhost, so a still-working home page is what rules out the block
+denying more than intended.
+
+Proven in the container first, where the harness now runs 42 checks including a
+POST assertion and a check that `system.multicall` is absent from the response
+body. All three were shown to fail against the pre-change image before the fix
+existed.
+
+**Q&A:**
+
+- *If `GET` already returned `405`, was it ever really open?* Yes, completely.
+  `xmlrpc.php` rejects GET by design and answers POST, which is the only method
+  it uses. The `405` was WordPress saying "wrong verb", not Apache saying "no".
+  This is the reason the harness check issues a POST and reads the body rather
+  than trusting a status code.
+- *Does anything break?* Nothing in use here. Jetpack is not installed, the
+  WordPress mobile app uses the REST API, and no plugin in `scripts/plugins.txt`
+  needs xmlrpc. Pingbacks and trackbacks stop working, which is deliberate: they
+  are a spam vector this site has no use for.
+- *Why `403` rather than `404`?* A 403 is honest about what happened. Hiding the
+  file behind a 404 adds nothing, because the path is in every WordPress
+  install and scanners do not consult a directory listing before trying it.
+
+#### Step 7 — theme and content plugin deployed ✅
+
+**Goal:** put `theme/` (Everything 4 Cats - Theme) and `plugins/e4c-content` on
+the live host, so the site serves the real design instead of a bundled default.
+
+**Why it matters:** this is the first deploy that carries a theme, and it moved
+three things at once: the theme symlink, a second repository plugin, and the
+self-hosted fonts. Each fails differently and only one of them is visible on the
+home page, which is why the verification below checks four surfaces rather than
+looking at the site.
+
+**Commands:**
+
+```bash
+# ON SERVER
+cd /srv/everything4cats
+sudo SITE_DOMAIN=everything4cats.ca ADMIN_USER=casey ADMIN_EMAIL=<admin-email> \
+     THEME_DIR=theme bash scripts/provision.sh
+```
+
+**Verify:** checked over HTTPS from a workstation.
+
+```
+home    200
+reviews 200
+search  200
+font    200
+404     404
+```
+
+`reviews 200` is the load-bearing one. That URL exists only if `e4c-content`
+registered the `review` post type, so it is the check that proves the second
+repository plugin actually deployed. `font 200` proves the theme symlink serves
+assets, not just templates. `404` proves the new `404.php` is reached rather
+than a server default.
+
+**Q&A:**
+
+- *The first run died with a PHP TypeError inside WP-CLI. What was it?* The
+  working directory. The script was run from `~`, and Ubuntu creates
+  `/home/ubuntu` as `0750`, so `www-data` cannot traverse it. Most `wp` commands
+  survive that because they address files absolutely, but `wp rewrite structure`
+  spawns a subprocess through `proc_open`, and `posix_spawn` fails with `EACCES`
+  when the child cannot resolve its own working directory. WP-CLI then called
+  `proc_close()` on the `false` it got back, which is the TypeError. The message
+  names WP-CLI and says nothing about directory permissions. `provision.sh` now
+  does `cd /` before any work, so the operator's shell location cannot matter.
+  Reproduced deliberately afterwards: the same command produced four error lines
+  from `/home/ubuntu` and zero from `/`.
+- *Why did the container harness never catch that?* Docker's default working
+  directory is `/`, which every user can traverse, so the harness always ran
+  from a safe location. The bug could only appear on a real host. This is a gap
+  in where the harness runs rather than in what it checks, and `cd /` closes it
+  by removing the dependency instead of adding a check.
+- *Nothing was printed for `e4c-content` during the run. Did it deploy?* It did.
+  A successful activation prints to stdout, which the script suppresses, while
+  "already active" prints to stderr, which shows. So silence was ambiguous and
+  had to be verified rather than read, which is what `reviews 200` did.
+- *Why does the closing list still say "not yet TLS" and tell me to point DNS?*
+  The script prints its full exit list on every run and has no memory of which
+  steps are done. Items 1 to 4 were completed in Steps 1, 2 and 4. Cosmetic.
+
+#### Step 8 — transactional mail through Amazon SES ✅
+
+**Goal:** end the silent-failure state where FluentSMTP was active with no relay,
+so WordPress reported every message as sent while none left the host.
+
+**Why it matters:** AWS blocks outbound port 25, so PHP `mail()` never delivered.
+Nothing surfaced that, because WordPress hands the message off and gets no error
+back. A password reset was therefore unrecoverable except over SSH.
+
+Amazon SES was chosen over Brevo on cost: at well under 50 messages a month it is
+roughly $0.10 per thousand and draws on credits already held. The price paid
+instead is setup, since SES starts sandboxed where Brevo has no gate.
+
+**DNS, four records at the registrar, not six.** Three DKIM CNAMEs and one
+`_dmarc` TXT. The apex SPF record was **not** touched, and that is the part worth
+remembering:
+
+- A custom MAIL FROM subdomain was configured in SES, then abandoned, because
+  Namecheap offers no `MX Record` type at all while its Email Forwarding service
+  is enabled. SES verifies a MAIL FROM domain only when both its MX and TXT
+  records exist, so without the MX the TXT was inert.
+- Working around that would have meant switching Mail Settings to Custom MX,
+  which disables the forwarding service rather than merely its records, and the
+  apex SPF record is locked by that same service.
+- It cost nothing. DMARC passes when **either** SPF or DKIM aligns. Easy DKIM
+  signs as `everything4cats.ca` and aligns, SPF authenticates `amazonses.com`
+  and does not. One is enough, and DKIM is the stronger signal anyway because it
+  survives forwarding where SPF does not.
+
+**Commands:** none on the server. This is console and DNS work, plus plugin
+configuration. Verified externally over DNS-over-HTTPS:
+
+```bash
+# ON HOST
+curl -s -H 'accept: application/dns-json' \
+  "https://cloudflare-dns.com/dns-query?name=_dmarc.everything4cats.ca&type=TXT"
+```
+
+**Verify:** a real password reset was triggered from `wp-login.php` rather than
+using the plugin's test button, and the received message's
+`Authentication-Results` header read:
+
+```
+spf=pass      smtp.mailfrom=ca-central-1.amazonses.com
+dkim=pass     header.d=everything4cats.ca
+dkim=pass     header.d=amazonses.com
+dmarc=pass    action=none header.from=everything4cats.ca
+compauth=pass reason=100
+```
+
+Delivered to Junk, which is new-domain reputation rather than a fault: the
+authentication is perfect, and only time and consistent sending change
+placement.
+
+**Q&A:**
+
+- *Why not add `include:amazonses.com` to the existing SPF record?* Two reasons.
+  It is unnecessary, because SPF authenticates the envelope sender and SES owns
+  that. And it is impossible: Namecheap's panel shows the apex SPF record as
+  locked, managed by the Email Forwarding service. Publishing a second SPF
+  record instead is a permanent failure rather than a merge, since receivers
+  treat two records as a permerror and stop evaluating.
+- *Why did the IAM user fail with `AccessDenied` on `ses:ListIdentities`?* The
+  policy granted only `SendRawEmail` and `SendEmail`. FluentSMTP also reads
+  `ListIdentities`, `GetSendQuota` and `GetSendStatistics` to populate its
+  dashboard. Those three are read-only, cannot send or configure anything, and
+  do not support resource-level scoping, so `Resource: "*"` is required for
+  them. The user still cannot verify an identity, delete one, or act outside
+  SES, which is the property that matters if the keys leak.
+- *Why a scoped IAM user rather than an instance role?* Lightsail does not
+  support IAM instance profiles the way EC2 does, so there is no way to avoid a
+  long-lived key here. That is precisely why the policy is narrow: on EC2 the
+  role would limit the blast radius, and on Lightsail the policy is the only
+  thing doing that job.
+- *Why is the return-path option in FluentSMTP switched off?* It duplicates what
+  SES already does, since feedback forwarding routes bounces to the From
+  address. And if it influenced the envelope sender rather than only a header,
+  it would move the SPF check onto `everything4cats.ca`, whose apex record
+  authorises the registrar's forwarders and not SES, turning a pass into a
+  softfail.
+
+**Still open:** production access. AWS responded to the initial request asking
+for detail on sending frequency, list maintenance and bounce handling. Until it
+is granted, SES delivers only to verified identities.
+
+#### Step 9 — backups, restored and proven ✅
+
+**Goal:** get the irreplaceable half of this site off the instance, and prove it
+comes back.
+
+**Why it matters:** until content existed, losing the server cost nothing.
+`provision.sh` rebuilds the machine, `plugins.txt` reinstalls the plugin
+baseline, and the theme and both custom plugins come from git. The first review
+written ends that, because writing is the one thing here that is not
+reproducible from the repository.
+
+**Scope, which is also the cost decision.** UpdraftPlus to Google Drive, backing
+up **the database and `wp-content/uploads` only**. Plugins, themes and core are
+all excluded because all three are reproducible with one command. That keeps the
+backup inside Drive's free tier for a long time and keeps restores fast.
+
+Database daily retaining 14, files weekly retaining 4. The two differ because
+writing changes every working day while photographs change rarely, and the
+realistic disaster is not a dead disk but a bad edit noticed a week later.
+
+**Lightsail automatic snapshots were deliberately not enabled.** They bill per
+GB-month and retain seven dailies, to duplicate a machine that rebuilds from
+scratch. Skipping them costs recovery time rather than data. This is a
+deliberate departure from the usual "back up at both layers" rule, and it holds
+here only because the infrastructure is code.
+
+**Commands:** the restore, which is the part worth writing down. Performed
+against the local Docker container, never the live site, using the copy
+downloaded from Google Drive rather than the one UpdraftPlus leaves on the
+server.
+
+```bash
+# IN CONTAINER
+wp db clean --yes
+gzip -dc backup_*-db.gz > /tmp/db.sql
+wp db import /tmp/db.sql
+wp search-replace "everything4cats.ca" "e4c.test" --all-tables --skip-columns=guid
+python3 -c "import zipfile,glob; zipfile.ZipFile(glob.glob('backup_*-uploads.zip')[0]).extractall('/var/www/everything4cats/wp-content/')"
+chown -R www-data:www-data /var/www/everything4cats/wp-content/uploads
+```
+
+**Verify:** the restored container served the site at `200` with 41,778 bytes
+and **zero** occurrences of fatal, parse error, warning or notice in the body.
+29 tables, 5,101 options, users and terms all present, 15 upload files
+extracted.
+
+**Q&A:**
+
+- *Why restore from Google Drive rather than the copy on the server?*
+  UpdraftPlus keeps a local staging copy in `wp-content/updraft/`. Restoring
+  from that proves nothing, because in a real disaster the server is gone and
+  the remote copy is all that exists. Using the Drive copy tests the retrieval
+  path as well as the archive.
+- *Why restore into the container rather than the live site?* Restoring over
+  production to "test" a backup risks the thing being protected. The container
+  is the same stack, is disposable, and rebuilds with one command, so a broken
+  restore costs nothing.
+- *The first restore showed no published posts and no logo. Was the backup
+  broken?* No. The backup predated the branding being assigned, and "Hello
+  world!" had already been moved to the trash. The restore was faithful to the
+  moment it was taken, which is the correct behaviour. A second backup taken
+  after the branding was set contains all eight Site Icon crops, confirming it.
+- *What broke during the restore?* `unzip` is not installed on a bare Ubuntu
+  host, so the extraction step failed. Python is always present, and the
+  one-liner above uses it. Worth knowing before a real recovery, because that is
+  the worst moment to discover a missing utility.
+- *Do not leave a database backup in the repository root.* `.gitignore` covers
+  `*.sql`, `*.sql.gz`, `*.tar.gz` and `*.zip`, and UpdraftPlus names its
+  database export `-db.gz`, which matches none of them. During this step the
+  uploads archive was correctly ignored while the database dump sat untracked
+  and one `git add .` away from a public repository. A dump carries the
+  `wp_users` table with password hashes and `wp_options` with plugin
+  credentials. The authoritative copies live in Google Drive, so keep local ones
+  outside the repository, for example under `~/backups/`, rather than relying on
+  a pattern match to catch them. `.gitignore` has since been widened to `*.gz`
+  and `backup_*`, which closes this particular hole, but the habit is the real
+  fix: the next tool will name its output something else.
+
+#### Step 10 — auto-updates on ✅
+
+**Goal:** stop carrying the update backlog by hand, now that it is safe to.
+
+**Why it was off until now.** Unattended updates and no backups is the one
+combination with no recovery path. A plugin update that breaks the site at 3am
+is an inconvenience when a restore exists and a rebuild-from-nothing when it
+does not. So the decision was recorded early and deliberately gated on Step 9
+rather than on a date.
+
+**Why it goes on rather than staying off.** Outdated plugins are the actual
+compromise route for a WordPress host, not weak passwords and not core itself.
+Every week a known vulnerability sits unpatched is a week the site is findable
+by an automated scanner that reads plugin version numbers off the page. Manual
+updating loses to that, because it depends on someone remembering.
+
+**Commands:**
+
+```bash
+# ON THE SERVER
+wp plugin auto-updates enable --all
+wp theme auto-updates enable --all
+```
+
+**Verify:** `wp plugin list --field=name --status=active` alongside
+`wp plugin auto-updates status --all`, confirming no active plugin is left off.
+
+**Q&A:**
+
+- *Does this cover WordPress core?* No. Core auto-updates for minor and security
+  releases are on by default and are a separate setting from these two. Major
+  version updates stay manual, which is correct: minor releases are security
+  fixes and are safe, major ones change behaviour.
+- *What is the residual risk?* An update lands, breaks a page, and nobody
+  notices until a visitor does. That is a monitoring gap rather than a backup
+  gap, and it is smaller than the risk of an unpatched plugin. The backup exists
+  either way.
+
+#### Step 11 — Secure Custom Fields, and the plugin baseline becomes complete ✅
+
+**Goal:** give reviews and roundups a real editing UI without taking on a
+commercial dependency.
+
+**The problem this replaced.** `plugins/e4c-content` registers its field groups
+through ACF's API, and four of the eight fields are `repeater`, which was an
+ACF Pro field type. Pro is commercial and not on wordpress.org, so no slug in
+`scripts/plugins.txt` could install it. That file carried a block headed
+"CANNOT be in this list, and still required", and every rebuild needed a manual
+purchase-and-licence step in wp-admin.
+
+**What changed.** Secure Custom Fields, WordPress.org's October 2024 fork of
+ACF, free and on the plugin directory. It is now one line in `plugins.txt`.
+
+**Verified before switching, not assumed.** The published package was downloaded
+and inspected at version 6.9.5. Every field type `e4c-content` uses is present:
+
+| Type used | In SCF |
+| --- | --- |
+| `text`, `textarea`, `url`, `post_object` | yes |
+| `repeater` | yes |
+
+`flexible-content`, `clone` and `gallery` ship too, so the fork carries the Pro
+feature set rather than only the free half, and
+`acf_add_local_field_group`, `get_field`, `have_rows`, `acf_get_field_type` and
+`acf_get_local_field_groups` all still resolve under their ACF names.
+
+**Why it was a drop-in.** The templates never call `have_rows()` or
+`the_row()`. They call `e4c_field()` once and iterate the returned array. The
+entire coupling to ACF is two function names, both of which the fork keeps, so
+no PHP in the theme or in `e4c-content` changed behaviour.
+
+**The saving is not really the licence fee.** It is that `plugins.txt` describes
+the whole plugin baseline again. A rebuilt host needs no manual plugin step, the
+disaster-recovery sequence loses an item, and the container harness now
+exercises the real `get_field()` path instead of only the raw post-meta fallback.
+
+**Commands:** on the live host, after pulling.
+
+```bash
+# ON THE SERVER
+cd /srv/everything4cats && git pull
+sudo -u www-data wp --path=/var/www/everything4cats plugin install secure-custom-fields --activate
+sudo -u www-data wp --path=/var/www/everything4cats plugin auto-updates enable --all
+```
+
+**Both flags are load-bearing, and this was got wrong once.** `--path` is
+required because `/srv/everything4cats` is the git checkout and
+`/var/www/everything4cats` is the WordPress installation, so a `wp` command run
+from the checkout reports "This does not seem to be a WordPress installation"
+and helpfully suggests `wp core download`. Do not take that suggestion: running
+it extracts a second copy of WordPress into whatever directory you are standing
+in, which happened once on this project and had to be unpicked by hand.
+
+`sudo -u www-data` matters just as much. Installing as root leaves the plugin
+files owned by root while the auto-updater runs as `www-data`, so the plugin
+silently stops updating.
+
+**Verify:** `bash scripts/test-provision/run.sh` exits 0 with `ALL CHECKS
+PASSED`, 59 checks against the previous 56. Three are new: the field API is
+present, the `repeater` type resolves, and both `group_e4c_*` field groups
+register. A review created in the container with `update_field()` rendered at
+36,461 bytes with zero PHP errors and all six values present, including both
+repeater rows and the specs table.
+
+**Q&A:**
+
+- *How do you know the ACF path ran rather than the fallback?* `wp post meta
+  list` shows underscore-paired keys, `_e4c_pros` holding `field_e4c_pros`,
+  which map a value back to its field definition. The raw post-meta fallback
+  never writes them.
+- *`wp plugin auto-updates enable --all` printed `Error: Only enabled 1 of 12`.
+  Did it fail?* No. It counts plugins that were already enabled as failures, so
+  installing one new plugin into a fully-enabled set always prints this and
+  exits non-zero. Read `wp plugin auto-updates status --all` to see the real
+  state. Worth knowing because in a script that exit code looks like a genuine
+  failure.
+- *Is there any reason to still buy ACF Pro?* Not for this site. The one honest
+  argument is support and the pace of feature work, neither of which this
+  project consumes. `fields.php` is written against ACF's API rather than
+  anything fork-specific, so moving back would be a plugin swap and no code
+  change.
+- *What broke during verification?* Nothing in the change, but the check found a
+  pre-existing bug. With fields written by the plugin and the plugin then
+  deactivated, `e4c_field()` reads the repeater's parent key, gets the row
+  count, and `single-review.php` renders a bullet reading "2" where the pros
+  should be. It could not surface before now, because no container had ACF and
+  so no container had data in ACF's storage shape. Logged as Phase 18 rather
+  than fixed here, since it is a behaviour change to a shared helper and
+  deserves its own diff.
+
+#### Step 12 — the theme baseline, so a rebuild stops resurrecting deleted themes ✅
+
+**Goal:** make a freshly provisioned host carry the same themes the live host
+actually has.
+
+**The drift.** twentytwentythree and twentytwentyfour were deleted by hand on
+the live server. `provision.sh` handled only the repo theme through `THEME_DIR`
+and said nothing about the themes WordPress ships, so the next rebuild would
+have restored both. Nothing in the harness would have noticed, because it
+asserted nothing about themes at all.
+
+**The fix:** `scripts/themes.txt`, using the same grammar as `plugins.txt`.
+
+```
+twentytwentyfive                # kept deliberately: the fallback
+twentytwentyfour:delete
+twentytwentythree:delete
+```
+
+Hardcoding the two names in `provision.sh` was rejected for the same reason it
+was rejected for Akismet and Hello Dolly: the list belongs in a file that
+describes the whole baseline rather than most of it.
+
+**Why one core theme is kept.** If `theme/` throws a fatal, WordPress falls back
+to a core theme. With one present the site degrades to ugly but readable; with
+none the failure is a white screen, and recovering that needs shell access at
+exactly the moment the site is already down. twentytwentyfive rather than an
+older release, because it receives security updates the longest, and
+auto-updates are on for all themes so it maintains itself.
+
+**One ordering detail that matters.** The themes loop runs *after* theme
+activation, because a theme cannot be deleted while it is active. On a host
+provisioned before `THEME_DIR` exists, WordPress is still on a bundled default,
+so the loop skips rather than dies if a theme marked for deletion is the active
+one.
+
+**Verify:** `bash scripts/test-provision/run.sh` exits 0 with `ALL CHECKS
+PASSED`. Three checks are new and are driven from `themes.txt` itself, because a
+check that hardcoded the names could not catch the file and the provisioner
+disagreeing:
+
+```
+PASS  twentytwentyfive present                   1
+PASS  twentytwentyfour                           MISSING
+PASS  twentytwentythree                          MISSING
+```
+
+`wp theme list` in the provisioned image returns `theme` (active) and
+`twentytwentyfive` (inactive), and nothing else.
+
+#### Step 13 — the missing page template ✅
+
+**Goal:** make a page with no bespoke template render as a page.
+
+**The bug.** The theme had no `page.php`. WordPress walks the template hierarchy
+(`page-{slug}`, `page-{id}`, `page`, `singular`, `index`) and landed on
+`index.php`, which is an archive template: it loops results through
+`template-parts/card-post.php`, which renders
+`esc_html( wp_trim_words( $dek, 26 ) )`.
+
+So any page without its own template was published as **a 26-word card with
+every tag stripped**. The Privacy Policy and the Cookie Policy were both in that
+state, and the consent banner linked to both.
+
+**Why it hid.** The only two pages that had ever existed, How we test and
+Newsletter, are matched by slug and have their own templates. The fallback path
+had never been exercised by a real page, and 62 harness checks passed
+throughout.
+
+**The fix:** `theme/page.php`, rendering header, title, `the_content()`, footer,
+with no furniture of its own. The bespoke templates keep precedence through the
+hierarchy automatically. `e4c-article` and `e4c-page-title` already existed in
+`style.css`, so no CSS was added.
+
+**Verify:** `bash scripts/test-provision/run.sh` exits 0 with `ALL CHECKS
+PASSED`, 64 checks against the previous 62. Two are new:
+
+```
+PASS  page renders full content                  1
+PASS  page keeps block markup                    1
+```
+
+Both were proven to fail first: `page.php` renamed away in a throwaway
+container, verification re-run, exactly those two red and exit code 2.
+
+**Q&A:**
+
+- *Why probe with Sample Page instead of creating a fixture?* It exists on every
+  fresh install, it is 204 words so `Doohickey` sits well past the 26-word trim,
+  and it contains block quotes that `esc_html` cannot leave intact. Creating a
+  page inside `verify.sh` would break its read-only contract and add no signal.
+- *Why did this take three wrong diagnoses?* The block editor's paste handling
+  was blamed twice, and a grep written as `href="[^"]*cookie[^"]*"` matched
+  Complianz's own `cookiedatabase.org` link and was misread as proof our link
+  existed. The turning point was checking the **stored** post content rather
+  than the rendered page: it was byte-perfect, with 28 `wp:heading` markers,
+  which moved the search from content to rendering.
+- *What is the general lesson?* A missing template does not error. WordPress
+  silently renders through a less specific one, so the symptom looks like a
+  content problem. When markup vanishes between the database and the page, check
+  which template file is actually handling the request before touching the
+  content again.
+
+#### Step 14 — consent, analytics and SEO ✅
+
+**Goal:** configure the three plugins that need a one-time interview, in the
+order that avoids them fighting each other.
+
+**Four conflicts, every one of which fails silently.** This is why it was a
+walkthrough rather than "run the wizard":
+
+| Conflict | Resolution |
+| --- | --- |
+| Rank Math Schema duplicates `e4c-compliance`'s `Article` JSON-LD | Schema module off |
+| Rank Math Redirections duplicates the `redirection` plugin | Redirections module off |
+| Rank Math "Nofollow External Links" would tag every outbound link | Off. `e4c-compliance` tags only monetised domains, on purpose |
+| Two plugins could inject the GA4 tag | Complianz injects it alone; Site Kit stays inactive |
+
+**Sitemap.** Posts, Pages, Reviews, Roundups, and `cat-category`. Author and
+date archives noindexed, because a single-author site produces duplicate
+listings of the same posts.
+
+**The two `Categories` checkboxes.** Rank Math offered two identically labelled
+taxonomies with `value="1"` on both, distinguishable only by registration order.
+`plugins/e4c-content` registers `cat-category` with the label `Categories`,
+identical to core's. Listing public taxonomies in order resolves it: core
+`category` is first, `cat-category` is fourth. The sitemap wants the latter.
+
+**Consent.** Do Not Track and Global Privacy Control are honoured. DNT is inert,
+its spec discontinued in 2019, but GPC is a legally binding opt-out under
+California's CPRA and is enforced. The cost, recorded so it is not later
+mistaken for a tracking fault: visitors sending either signal are opted out
+without touching the banner, so GA4 reads slightly below reality.
+
+**Verify:** the consent gate is real, not decorative.
+
+```bash
+curl -s https://everything4cats.ca/ | tr '\n' ' ' \
+  | grep -oE '<script[^>]{0,300}>' | grep -inE 'googletagmanager|text/plain'
+```
+
+```
+<script type="text/plain" data-service="google-analytics" data-category="statistics"
+        data-cmplz-src="https://www.googletagmanager.com/gtag/js?id=G-...">
+```
+
+**`data-cmplz-src`, not `src`, is the proof.** A browser only fetches from
+`src`, so the request to Google is never made. `type="text/plain"` blocks
+execution as a second layer. Both are swapped back after consent.
+
+**Q&A:**
+
+- *Why does the Measurement ID still appear in the page source?* Because
+  Complianz blocks by rewriting the tag, not by removing it. An earlier check
+  here expected zero occurrences and was simply wrong: counting occurrences
+  cannot distinguish a blocked script from a live one. Read the attributes, or
+  watch the Network tab.
+- *Why is Google Consent Mode v2 not enabled?* It is paywalled, and it is not
+  needed. It sends cookieless signals so Google can model conversions from
+  visitors who declined. With no Google Ads campaigns there is nothing to model,
+  and its absence means a declining visitor is simply not measured, which is
+  more privacy-protective rather than less.
+- *Why not let Complianz generate the Privacy Statement?* That generator is
+  paid. WordPress's own generator at `Settings > Privacy` is free, and the page
+  needs rewriting either way: its template describes comments, media uploads and
+  embedded content, none of which exist here. Only the Cookie Policy is
+  generated by Complianz.
+
+#### Step 15 — the structural content ✅
+
+**Goal:** build everything a review needs around it, before writing any.
+
+**Inventory first.** The live site had two pages (both legal), three
+attachments, zero posts, zero reviews, zero roundups, zero `cat-category` terms
+and an empty Tagline. One planned task, deleting the fixtures, turned out to be
+already done.
+
+**Two templates existed with no pages behind them.** `page-how-we-test.php` and
+`page-newsletter.php` are matched by slug, and neither slug had a page. The
+methodology page that PLAN.md calls the site's credibility foundation was
+returning 404.
+
+**The taxonomy encodes a content boundary.** PLAN.md permits litter boxes, toys,
+furniture and food *storage*, and puts diet, illness and medication out of scope
+as YMYL-adjacent. The term is therefore named **`Food storage`**, not `Food`, so
+the constraint is structural rather than something to remember while tagging.
+
+```bash
+# ON THE SERVER
+sudo -u www-data wp --path=/var/www/everything4cats option update blogdescription "Tested in a real house with real cats"
+sudo -u www-data wp --path=/var/www/everything4cats term create cat-category "Litter boxes" --slug=litter-boxes
+sudo -u www-data wp --path=/var/www/everything4cats post create --post_type=page --post_title="Newsletter" --post_name=newsletter --post_status=publish
+sudo -u www-data wp --path=/var/www/everything4cats post create /tmp/how-we-test.html --post_type=page --post_title="How we test" --post_name=how-we-test --post_status=publish
+```
+
+Page bodies go in through WP-CLI from a file rather than the block editor, for
+the reason Step 13 established the hard way.
+
+**The Newsletter page is deliberately empty.** `page-newsletter.php` renders the
+`e4c/newsletter-patch` pattern when the body is falsy, so the page is honest
+about there being no signup yet instead of promising a form that does not exist.
+It gets a body when a provider is chosen.
+
+**Verify:**
+
+```
+/how-we-test/                200
+/newsletter/                 200
+/category-of/litter-boxes/   200
+<title>Everything4Cats - Tested in a real house with real cats</title>
+```
+
+Plus `Where we stop` present on the first and the fallback pattern on the
+second, which is what proves each page uses its own template rather than the
+generic `page.php`.
+
+**Q&A:**
+
+- *Why does a 404 on a category archive mean the term is missing rather than
+  empty?* WordPress returns `200` for a term that exists with no posts: it
+  serves the archive template with an empty loop. It only 404s when the term
+  itself is absent. That makes the status code diagnostic rather than ambiguous,
+  and it is how the missing terms were identified without guessing.
+- *Why five categories and not more?* Empty archives are noindexed by the Rank
+  Math setting enabled in Step 14, so extra terms cost nothing but clutter. More
+  can be added as reviews land.
+
+#### Step 16 — the provisioner enables auto-updates ✅
+
+**Goal:** stop a rebuilt host coming up quietly less safe than the live one.
+
+**The gap.** Auto-updates were enabled by hand in Step 10 and existed nowhere in
+`provision.sh`. A rebuild would have come up with them off, undoing that step
+silently. This is the same class of drift `plugins.txt` and `themes.txt` were
+created to close, found by auditing the provisioner against everything set by
+hand since it last ran.
+
+**The trap, which is worth knowing before you script this yourself.**
+
+```bash
+wp plugin auto-updates enable --all
+# Error: Only enabled 1 of 12 plugin auto-updates
+```
+
+It counts **already-enabled** plugins as failures and exits non-zero. Under
+`set -euo pipefail` that aborts every re-run, including the harness's second
+pass, which is the run that proves idempotence.
+
+The exit code cannot distinguish "already done" from "genuinely broken", so the
+provisioner ignores it, leaves stderr visible, and the **end state is asserted
+in the harness** instead:
+
+```
+PASS  plugin auto-updates all enabled            enabled
+PASS  theme auto-updates all enabled             enabled
+```
+
+That is a stronger check than the exit code would have been, and it is the
+general pattern: when a command's exit code is unreliable, assert the state
+rather than adding a fallback that turns failure into silence.
+
+**Verify:** `bash scripts/test-provision/run.sh` exits 0 with 66 checks, up from
+64. Both new checks were confirmed to fail beforehand: the same status command
+run against the pre-change image returned `disabled` for plugins and themes.
+
+**What was deliberately not added:**
+
+- **`site_icon` and `custom_logo`.** `e4c_fallback_site_icon()` and
+  `e4c_brand_logo()`'s bundled tier brand a fresh host without them, so the
+  absence is the design working rather than a gap.
+- **Tagline, terms, pages and menus.** Content, not infrastructure. They are
+  protected by the UpdraftPlus backup. Putting them in the provisioner too would
+  give a restore a second source of truth to fight with.
+
+That division is the rule the whole repo runs on: **reproducible from nothing
+goes in the provisioner; writing and editorial structure go in the backup.**

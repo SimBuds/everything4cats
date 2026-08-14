@@ -39,20 +39,19 @@ anyone wants the thing, and building more of it does not change that.
 
 ---
 
-## Current state, 2026-08-10
+## Current state
 
-The engineering is written and the hosting decision is made. Nothing is live.
+Tracked in `IMPLEMENT.md`, not here. This file holds the idea, the settled
+decisions and the order of work, which change slowly. A snapshot of what exists
+changes every session, and keeping one in both files guarantees one of them is
+wrong.
 
-### What exists
+The snapshot that used to sit here was written 2026-08-10 and had gone stale in
+every particular: it said nothing was live, listed 42 harness checks against the
+current 66, and predated the theme, the content plugin and the staging scripts.
+Removed 2026-08-14.
 
-| | |
-|---|---|
-| `docker/`, `compose.yaml` | Ubuntu 24.04 container mirroring a real server: Apache, php-fpm, MySQL, WP-CLI, sshd. A **test harness**, not the deployment target. Also holds the two Apache configs the real host uses, the vhost and `e4c-xmlrpc.conf`. |
-| `scripts/provision.sh` | Bare Ubuntu to a working site, idempotent, safe to re-run. |
-| `scripts/test-provision/` | Builds a throwaway host, provisions it **twice**, then runs 42 checks. Costs nothing and burns no hosting credits. |
-| `scripts/inventory.sh` | Read-only audit of a server, run once before anything is installed to establish the starting point. Writes nothing. |
-| `scripts/plugins.txt` | The plugin baseline, read by `provision.sh` so the two cannot drift. |
-| `plugins/e4c-compliance/` | Affiliate disclosure, `rel="sponsored nofollow"`, Article schema. **A plugin, not theme code.** |
+---
 
 ### Decided
 
@@ -90,19 +89,6 @@ The engineering is written and the hosting decision is made. Nothing is live.
 - **The Lightsail firewall is the outer layer and it always applies.** A port
   open in ufw but closed in the console is closed, and neither side explains
   why. This is the most common way a correctly provisioned host appears broken.
-
-### What does not exist yet
-
-- **The base theme.** Casey is supplying it. `provision.sh` therefore leaves
-  WordPress on its bundled default unless `THEME_DIR` is set, rather than
-  failing or activating something that is not there.
-- Automatic snapshots. The instance exists with none configured, so nothing is
-  backed up. Addressed with the other backup work once the site is live.
-- Any content.
-- A newsletter provider.
-- TLS, mail, consent and analytics, all of which follow the server.
-
----
 
 ## Decisions
 
