@@ -8,8 +8,22 @@
   complete technically and still sandboxed pending AWS production access.
   Phases 15 to 18 are planned. Phase 18 was opened by a bug found while
   verifying Phase 14 and is not a launch blocker.
-- What is left is no longer infrastructure. It is ACF Pro, content, the two
-  plugin wizards, and the launch flip, in that order.
+- What is left is no longer infrastructure. It is the two plugin wizards,
+  content, a QA sweep, and the launch flip.
+- **Run order, which is not numeric order.** Phase numbers are identifiers and
+  are never reused, so resequencing is recorded here rather than by renumbering
+  everything and invalidating the references already written into `README.md`
+  and the phase reports:
+
+  1. **20** themes (`themes.txt`, mirrors the live host)
+  2. **16** consent, analytics and SEO wizards
+  3. **15** content: fixtures out, Tagline, first reviews, a roundup
+  4. **15b** the pre-launch QA sweep on real content
+  5. **17** the launch flip: `blog_public` to 1, sitemap, cache, snapshot
+
+  Phases **18** (repeater fallback) and **19** (stale README sections) are
+  unsequenced. Neither blocks launch and either can be taken whenever there is
+  an appetite for small work.
 - The Current-state block above was stale until 2026-08-13, still naming Phase 7
   as last complete and Phase 11 as next while the roll-call beside it said 1 to
   13. Corrected rather than explained away, and worth noting because a stale
@@ -803,9 +817,33 @@ are execution-assist and each stays open across turns.
   permanent failure rather than a merge.
 
 ### Phase 14: Secure Custom Fields replaces the ACF Pro dependency, so the field baseline installs itself.
-- Status: **complete 2026-08-13.** Repo half done and verified in the container.
-  The live host still needs the deploy, which is a `git pull` plus
-  `wp plugin install secure-custom-fields --activate`, and is Casey's to run.
+- Status: **complete 2026-08-13, both halves.** Repo verified in the container at
+  59 checks, then deployed to the live host and verified there: plugin `active`,
+  `acf_add_local_field_group` present, and both `group_e4c_*` field groups
+  registered. Committed as `24b18fd`.
+- Two instruction bugs surfaced during the deploy, both mine, both now fixed in
+  `README.md` rather than only in the conversation. The handed-over commands
+  omitted `--path`, so `wp` was run from the git checkout at
+  `/srv/everything4cats` instead of the installation at
+  `/var/www/everything4cats` and reported "This does not seem to be a WordPress
+  installation", whose suggested remedy (`wp core download`) is the same one
+  that extracted a stray WordPress tree into a home directory earlier in this
+  project. They also omitted `sudo -u www-data`, which would have left the
+  plugin files root-owned and silently unupdatable.
+- **Tried and reverted the same day, kept for the trail:** moving the review
+  group to `'position' => 'side'` so it lands in the editor sidebar rather than
+  in the Meta Boxes panel below the writing canvas. The panel being off-screen
+  is what made the fields read as missing in the first place. Reverted at
+  Casey's call before it was committed, so `fields.php` is unchanged. If it
+  comes up again, the objection to `side` is width: the editor sidebar is around
+  280px and the three repeaters use table layouts, so Specifications is cramped
+  there. The better fix, if it is ever wanted, is splitting the group rather
+  than moving all of it.
+- Harmless but worth recording: `wp plugin auto-updates enable --all` prints
+  `Error: Only enabled 1 of 12 plugin auto-updates` and exits non-zero when the
+  other eleven are already enabled. It counts no-ops as failures. Confirmed
+  benign by reading `auto-updates status --all`, which showed 12 of 12 enabled,
+  rather than by assuming.
 - One-line goal: end the state where writing a review means hand-editing post
   meta, and do it without taking on a commercial dependency.
 - **Decision, 2026-08-13: Secure Custom Fields, not ACF Pro.** Casey asked for
@@ -869,12 +907,15 @@ are execution-assist and each stays open across turns.
   useful. That note under Phase 13 is now stale and this phase corrects it.
 
 ### Phase 15: The fixtures are gone and the site's own baseline content is published.
-- Status: planned 2026-08-13. Blocked on Phase 14.
+- Status: planned 2026-08-13. Unblocked, Phase 14 is done.
+- **Runs second-to-last, after Phase 16 and immediately before Phase 15b.**
+  Resequenced 2026-08-14 at Casey's request: content entry and the QA sweep are
+  to be the last work before the launch flip. See the run order in
+  *Current state*.
 - One-line goal: the site says something true about cat products instead of
   shipping WordPress sample data.
-- Not decomposed yet, deliberately. The shape depends on what Phase 14 makes
-  editable and on how long a first review actually takes to write. Decompose at
-  the start of the phase, not now.
+- Not decomposed yet, deliberately. The shape depends on how long a first review
+  actually takes to write. Decompose at the start of the phase, not now.
 - Known members: delete the remaining fixtures, set the site Tagline, which is
   still empty and which Rank Math will use, then the first reviews, at least one
   roundup pointing at them, and the How We Test page the theme already has a
@@ -882,9 +923,47 @@ are execution-assist and each stays open across turns.
 - Ordering note: the roundup cannot be written before the reviews it points at,
   because `e4c_picks` stores a post object rather than a copied title.
 
+### Phase 15b: The site passes a full pre-launch QA sweep on real content.
+- Status: planned 2026-08-14. **The last phase before Phase 17 flips the site
+  live.** Split from Phase 15 rather than folded into it, because "publish the
+  content" and "prove the whole site is sound" are two deliverables and the
+  one-sentence test rejects them as one phase. Precedent: Phase 8b was split from
+  Phase 8 for the same reason.
+- One-line goal: find the things that only appear once real content exists, while
+  the site is still noindexed and nobody is looking.
+- Why it cannot happen earlier: every render proven so far used fixtures or
+  container-seeded posts. Real articles have long titles, missing fields, images
+  of the wrong aspect ratio, and links to each other, and those are what break
+  templates.
+- Known members, to be turned into a checklist at the start of the phase:
+  - Every template rendered against real content: review, roundup, guide,
+    category archive, search with and without matches, 404, How We Test,
+    newsletter.
+  - Zero PHP fatals, warnings, notices or deprecations in any rendered body.
+  - No fixture content anywhere, including the trash and the media library.
+  - The affiliate disclosure appears on monetised posts and **only** on those,
+    which is the whole reason `e4c-compliance` keys off a domain list.
+  - Exactly one Article JSON-LD block per page, since Rank Math's schema module
+    is off precisely to prevent a second.
+  - Internal links resolve, no self-inflicted 404s, and the roundup's picks
+    point at published reviews rather than drafts.
+  - Images: every one has alt text, and the hero uses the explicit dimensions
+    `e4c_hero_image()` sets rather than reflowing.
+  - Mobile rendering at a narrow viewport, since the specs table and the picks
+    rows are the two parts most likely to overflow.
+  - `blog_public` still `0` at the end of this phase. It flips in Phase 17, not
+    here.
+- Deferred by definition: anything found here that is not a launch blocker
+  becomes its own phase rather than being fixed inline.
+
 ### Phase 16 (execution-assist): Consent, analytics and SEO are configured.
-- Status: planned 2026-08-13. Blocked on Phase 15, because both wizards ask
-  questions about content that does not exist yet.
+- Status: planned 2026-08-13. **Runs before Phase 15**, resequenced 2026-08-14.
+- The earlier note claiming this was blocked on Phase 15 was wrong and is
+  corrected here. Both wizards ask site-level questions: Complianz asks which
+  services run, which is a function of GA4 and the plugin set rather than of how
+  many articles exist, and Rank Math asks about site type and title templates.
+  Neither needs published articles. Running them first also means the first
+  review is written with the SEO fields already present rather than revisited.
 - One-line goal: the three plugins that need a one-time interview get it, in the
   order that avoids a duplicate-schema error.
 - Known members: the Complianz wizard, the Rank Math wizard **with its
@@ -970,6 +1049,30 @@ are execution-assist and each stays open across turns.
 - Small, and worth its own diff precisely because it is small: a doc fix mixed
   into a behaviour change is the kind of thing that gets reverted together with
   it.
+
+### Phase 20: The provisioner mirrors the theme set the live host actually has.
+- Status: planned 2026-08-14, requested by Casey after deleting
+  twentytwentythree and twentytwentyfour by hand on the live server.
+- One-line goal: stop a rebuild resurrecting themes that were deliberately
+  removed.
+- The gap, confirmed by reading `scripts/provision.sh`: it handles the repo
+  theme through `THEME_DIR` and says nothing about the themes `wp core download`
+  ships. So the live host and a freshly provisioned host now disagree, which is
+  the same class of drift that `plugins.txt` was created to close.
+- Proposed shape, and the reason it is not hardcoded in `provision.sh`: a
+  `scripts/themes.txt` carrying the same `:delete` grammar as `plugins.txt`.
+  When Akismet and Hello Dolly were deleted by hand, the fix was explicitly
+  *not* to hardcode them in the provisioner, on the grounds that `plugins.txt`
+  should be the single source of truth for plugin state rather than most of it.
+  The identical argument applies to themes.
+- **Decided 2026-08-14: twentytwentyfive is kept as the fallback**,
+  twentytwentythree and twentytwentyfour are deleted. Keeping one core theme
+  means a fatal in `theme/` degrades to an ugly site rather than a white screen,
+  which is worth more than the disk it uses. So `themes.txt` carries two
+  `:delete` entries and one plain entry asserting twentytwentyfive is present.
+- Also worth folding in, since it is the same file and the same question: the
+  harness currently asserts nothing about which themes exist, so it would not
+  have caught this drift either.
 
 ## Phase reports
 <!-- pasted at Stage 5, newest first -->

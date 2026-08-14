@@ -1,0 +1,37 @@
+# The theme baseline, one slug per line.
+#
+# Single source of truth for which WordPress-supplied themes exist on the host,
+# read by scripts/provision.sh. Blank lines and # comments are ignored.
+#
+# A trailing ":delete" removes a theme that ships inside the WordPress tarball.
+# A plain slug asserts the theme is present and installs it if it is not.
+#
+# This file exists for the same reason scripts/plugins.txt does. `wp core
+# download` unpacks the bundled themes on every fresh install, so leaving one
+# out of this list is not enough to keep it off the host: it has to be deleted.
+# Created 2026-08-14, after twentytwentythree and twentytwentyfour were removed
+# by hand on the live server and the provisioner would have restored both on the
+# next rebuild. Hardcoding the two names in provision.sh was rejected for the
+# same reason it was rejected for Akismet and Hello Dolly: this file should
+# describe the whole theme baseline rather than most of it.
+#
+# The active theme is NOT listed here. It comes from the repository via
+# THEME_DIR and is deployed by symlink, so wordpress.org knows nothing about it.
+
+twentytwentyfive                # kept deliberately: the fallback, see below
+twentytwentyfour:delete
+twentytwentythree:delete
+
+# ---------------------------------------------------------------------------
+# Why one core theme is kept rather than deleting all three.
+#
+# If theme/ ever throws a fatal, WordPress falls back to a core theme. With one
+# present the site degrades to ugly but readable. With none present the failure
+# is a white screen, and recovering it means shell access at exactly the moment
+# the site is already down. A few megabytes of disk is a cheap insurance premium
+# against that.
+#
+# twentytwentyfive rather than an older one because it is the newest and will
+# keep receiving security updates the longest. Auto-updates are enabled for all
+# themes, so it maintains itself.
+# ---------------------------------------------------------------------------

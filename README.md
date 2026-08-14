@@ -987,9 +987,22 @@ exercises the real `get_field()` path instead of only the raw post-meta fallback
 
 ```bash
 # ON THE SERVER
-wp plugin install secure-custom-fields --activate
-wp plugin auto-updates enable --all
+cd /srv/everything4cats && git pull
+sudo -u www-data wp --path=/var/www/everything4cats plugin install secure-custom-fields --activate
+sudo -u www-data wp --path=/var/www/everything4cats plugin auto-updates enable --all
 ```
+
+**Both flags are load-bearing, and this was got wrong once.** `--path` is
+required because `/srv/everything4cats` is the git checkout and
+`/var/www/everything4cats` is the WordPress installation, so a `wp` command run
+from the checkout reports "This does not seem to be a WordPress installation"
+and helpfully suggests `wp core download`. Do not take that suggestion: running
+it extracts a second copy of WordPress into whatever directory you are standing
+in, which happened once on this project and had to be unpicked by hand.
+
+`sudo -u www-data` matters just as much. Installing as root leaves the plugin
+files owned by root while the auto-updater runs as `www-data`, so the plugin
+silently stops updating.
 
 **Verify:** `bash scripts/test-provision/run.sh` exits 0 with `ALL CHECKS
 PASSED`, 59 checks against the previous 56. Three are new: the field API is
@@ -1004,6 +1017,12 @@ repeater rows and the specs table.
   list` shows underscore-paired keys, `_e4c_pros` holding `field_e4c_pros`,
   which map a value back to its field definition. The raw post-meta fallback
   never writes them.
+- *`wp plugin auto-updates enable --all` printed `Error: Only enabled 1 of 12`.
+  Did it fail?* No. It counts plugins that were already enabled as failures, so
+  installing one new plugin into a fully-enabled set always prints this and
+  exits non-zero. Read `wp plugin auto-updates status --all` to see the real
+  state. Worth knowing because in a script that exit code looks like a genuine
+  failure.
 - *Is there any reason to still buy ACF Pro?* Not for this site. The one honest
   argument is support and the pace of feature work, neither of which this
   project consumes. `fields.php` is written against ACF's API rather than

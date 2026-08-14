@@ -78,6 +78,24 @@ while read -r line <&3; do
 	ck "$slug" "$want_status" "${got:-MISSING}"
 done 3< /repo/scripts/plugins.txt
 
+echo "== Themes (expected from scripts/themes.txt) =="
+# Driven from the same file and the same grammar as the provisioner, for the
+# reason the plugin loop above is: a check that hardcodes the theme names would
+# not catch the two disagreeing. Added 2026-08-14, when the live host had
+# twentytwentythree and twentytwentyfour deleted by hand and nothing in this
+# harness would have noticed that a rebuild restored them.
+while read -r line <&3; do
+	line="${line%%#*}"; line="$(echo "$line" | xargs || true)"
+	[ -n "$line" ] || continue
+	slug="${line%%:*}"
+	got="$(W theme get "$slug" --field=status)"
+	if [ "$line" = "${slug}:delete" ]; then
+		ck "$slug" "MISSING" "${got:-MISSING}"
+	else
+		ck "$slug present" "1" "$([ -n "$got" ] && echo 1 || echo 0)"
+	fi
+done 3< /repo/scripts/themes.txt
+
 echo "== Filesystem =="
 ck "docroot owner"         "www-data"     "$(stat -c %U /var/www/everything4cats)"
 if [ -n "${THEME_DIR:-}" ]; then

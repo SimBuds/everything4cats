@@ -471,6 +471,38 @@ else
 	wp_run theme activate "$THEME_DIR"
 fi
 
+# The WordPress-supplied themes, read from scripts/themes.txt so this list
+# exists in exactly one place.
+#
+# Runs after activation above, deliberately. A theme cannot be deleted while it
+# is active, so doing this first would fail on a fresh host where WordPress is
+# still on its bundled default.
+#
+# Same fd 3 discipline as the plugin loop below: `wp` inherits stdin and will
+# consume the rest of the list, leaving the first entry applied and the others
+# silently skipped.
+ACTIVE_THEME="$(wp_run theme list --status=active --field=name 2>/dev/null || true)"
+
+while read -r line <&3; do
+	line="${line%%#*}"
+	line="$(echo "$line" | xargs || true)"
+	[ -n "$line" ] || continue
+
+	slug="${line%%:*}"
+	if [ "$line" = "${slug}:delete" ]; then
+		if [ "$slug" = "$ACTIVE_THEME" ]; then
+			# Never a hard failure. Reaching here means THEME_DIR was unset and
+			# WordPress is still on this theme, which is a legitimate state for a
+			# host provisioned before the repo theme exists.
+			skipped "theme $slug: marked for deletion but currently active"
+		elif wp_run theme is-installed "$slug" 2>/dev/null; then
+			wp_run theme delete "$slug" >/dev/null
+		fi
+	else
+		wp_run theme is-installed "$slug" 2>/dev/null || wp_run theme install "$slug"
+	fi
+done 3< "$REPO_DIR/scripts/themes.txt"
+
 # Plugins that travel with the repository rather than coming from
 # wordpress.org, linked the same way the theme is so a git pull is the whole
 # deploy.
