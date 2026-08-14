@@ -17,6 +17,7 @@ scripts/provision.sh    bare Ubuntu -> working site, idempotent
 scripts/inventory.sh    read-only audit of a server, writes nothing
 scripts/test-provision/ proves provision.sh in a throwaway container
 scripts/plugins.txt     the plugin baseline, read by provision.sh
+scripts/themes.txt      the theme baseline, read by provision.sh
 ```
 
 The base theme is not here yet. Casey is supplying it. See *Adding the theme*.
@@ -1036,3 +1037,106 @@ repeater rows and the specs table.
   so no container had data in ACF's storage shape. Logged as Phase 18 rather
   than fixed here, since it is a behaviour change to a shared helper and
   deserves its own diff.
+
+#### Step 12 — the theme baseline, so a rebuild stops resurrecting deleted themes ✅
+
+**Goal:** make a freshly provisioned host carry the same themes the live host
+actually has.
+
+**The drift.** twentytwentythree and twentytwentyfour were deleted by hand on
+the live server. `provision.sh` handled only the repo theme through `THEME_DIR`
+and said nothing about the themes WordPress ships, so the next rebuild would
+have restored both. Nothing in the harness would have noticed, because it
+asserted nothing about themes at all.
+
+**The fix:** `scripts/themes.txt`, using the same grammar as `plugins.txt`.
+
+```
+twentytwentyfive                # kept deliberately: the fallback
+twentytwentyfour:delete
+twentytwentythree:delete
+```
+
+Hardcoding the two names in `provision.sh` was rejected for the same reason it
+was rejected for Akismet and Hello Dolly: the list belongs in a file that
+describes the whole baseline rather than most of it.
+
+**Why one core theme is kept.** If `theme/` throws a fatal, WordPress falls back
+to a core theme. With one present the site degrades to ugly but readable; with
+none the failure is a white screen, and recovering that needs shell access at
+exactly the moment the site is already down. twentytwentyfive rather than an
+older release, because it receives security updates the longest, and
+auto-updates are on for all themes so it maintains itself.
+
+**One ordering detail that matters.** The themes loop runs *after* theme
+activation, because a theme cannot be deleted while it is active. On a host
+provisioned before `THEME_DIR` exists, WordPress is still on a bundled default,
+so the loop skips rather than dies if a theme marked for deletion is the active
+one.
+
+**Verify:** `bash scripts/test-provision/run.sh` exits 0 with `ALL CHECKS
+PASSED`. Three checks are new and are driven from `themes.txt` itself, because a
+check that hardcoded the names could not catch the file and the provisioner
+disagreeing:
+
+```
+PASS  twentytwentyfive present                   1
+PASS  twentytwentyfour                           MISSING
+PASS  twentytwentythree                          MISSING
+```
+
+`wp theme list` in the provisioned image returns `theme` (active) and
+`twentytwentyfive` (inactive), and nothing else.
+
+#### Step 13 — the missing page template ✅
+
+**Goal:** make a page with no bespoke template render as a page.
+
+**The bug.** The theme had no `page.php`. WordPress walks the template hierarchy
+(`page-{slug}`, `page-{id}`, `page`, `singular`, `index`) and landed on
+`index.php`, which is an archive template: it loops results through
+`template-parts/card-post.php`, which renders
+`esc_html( wp_trim_words( $dek, 26 ) )`.
+
+So any page without its own template was published as **a 26-word card with
+every tag stripped**. The Privacy Policy and the Cookie Policy were both in that
+state, and the consent banner linked to both.
+
+**Why it hid.** The only two pages that had ever existed, How we test and
+Newsletter, are matched by slug and have their own templates. The fallback path
+had never been exercised by a real page, and 62 harness checks passed
+throughout.
+
+**The fix:** `theme/page.php`, rendering header, title, `the_content()`, footer,
+with no furniture of its own. The bespoke templates keep precedence through the
+hierarchy automatically. `e4c-article` and `e4c-page-title` already existed in
+`style.css`, so no CSS was added.
+
+**Verify:** `bash scripts/test-provision/run.sh` exits 0 with `ALL CHECKS
+PASSED`, 64 checks against the previous 62. Two are new:
+
+```
+PASS  page renders full content                  1
+PASS  page keeps block markup                    1
+```
+
+Both were proven to fail first: `page.php` renamed away in a throwaway
+container, verification re-run, exactly those two red and exit code 2.
+
+**Q&A:**
+
+- *Why probe with Sample Page instead of creating a fixture?* It exists on every
+  fresh install, it is 204 words so `Doohickey` sits well past the 26-word trim,
+  and it contains block quotes that `esc_html` cannot leave intact. Creating a
+  page inside `verify.sh` would break its read-only contract and add no signal.
+- *Why did this take three wrong diagnoses?* The block editor's paste handling
+  was blamed twice, and a grep written as `href="[^"]*cookie[^"]*"` matched
+  Complianz's own `cookiedatabase.org` link and was misread as proof our link
+  existed. The turning point was checking the **stored** post content rather
+  than the rendered page: it was byte-perfect, with 28 `wp:heading` markers,
+  which moved the search from content to rendering.
+- *What is the general lesson?* A missing template does not error. WordPress
+  silently renders through a less specific one, so the symptom looks like a
+  content problem. When markup vanishes between the database and the page, check
+  which template file is actually handling the request before touching the
+  content again.

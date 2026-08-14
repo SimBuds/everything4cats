@@ -159,6 +159,22 @@ ck "GET /"                 "200"          "$(H /)"
 # mode the explicit .htaccess write in provision.sh exists to prevent.
 ck "GET /hello-world/ (post permalink)"  "200" "$(H /hello-world/)"
 ck "GET /sample-page/ (page permalink)"  "200" "$(H /sample-page/)"
+# A page with no bespoke template must render in full, not as an archive card.
+#
+# Until 2026-08-14 the theme had no page.php, so WordPress walked past
+# page-{slug}, page-{id}, page and singular and landed on index.php, which is an
+# archive template: it loops through template-parts/card-post.php and renders
+# esc_html( wp_trim_words( $dek, 26 ) ). The Privacy Policy and Cookie Policy
+# were both published as 26-word fragments with every tag stripped, and the
+# consent banner linked to both. Every check in this file passed throughout.
+#
+# Sample Page is the right probe because it exists on any fresh install, carries
+# 204 words so "Doohickey" sits far past the trim point, and contains block
+# quotes, which esc_html cannot leave intact. A status-only check cannot see any
+# of this, which is exactly how the bug survived.
+B() { curl -s -H 'Host: e4c.test' "http://127.0.0.1$1"; }
+ck "page renders full content" "1" "$([ "$(B /sample-page/ | grep -c 'Doohickey')" -gt 0 ] && echo 1 || echo 0)"
+ck "page keeps block markup"   "1" "$([ "$(B /sample-page/ | grep -c '<blockquote')" -gt 0 ] && echo 1 || echo 0)"
 ck "GET /definitely-not-here/ is a 404"  "404" "$(H /definitely-not-here/)"
 # search.php renders with no matches, which is the path that exercises its empty
 # state and its facet loop against zero counts. A search template that only

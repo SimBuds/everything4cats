@@ -920,10 +920,57 @@ are execution-assist and each stays open across turns.
   still empty and which Rank Math will use, then the first reviews, at least one
   roundup pointing at them, and the How We Test page the theme already has a
   template for.
+- **Added 2026-08-14 during Phase 16: the Privacy Statement is a writing task,
+  not a wizard click.** Complianz generates the Cookie Policy free but gates the
+  Privacy Statement behind its paid tier, so the page comes from WordPress's own
+  generator at Settings > Privacy and is then selected in Complianz as an
+  existing page. The generated draft is a skeleton describing comments, media
+  uploads and embedded content, none of which matches this site, so publishing
+  it unedited would make false statements in the one document that must be
+  accurate. It has to be rewritten to describe GA4 behind consent, the
+  newsletter provider, the absence of comments, and affiliate links.
+- That page is a launch blocker rather than a nicety: Complianz links it from
+  the consent banner, and both PIPEDA and Google's terms require it once GA4 and
+  the newsletter exist. The draft already exists as page ID 3, created by
+  WordPress at install and never touched, so this is an edit rather than a
+  creation.
+- **Second launch blocker, found 2026-08-14 while closing Phase 16: the Cookie
+  Policy does not exist either.** Complianz reported "not all required pages
+  have been generated" and that warning was read as referring only to the
+  Privacy Statement. It did not. A page listing showed exactly one page on the
+  whole site, the untouched Privacy Policy draft, so Complianz generated
+  nothing. The consent banner is enabled and its Cookie Policy link currently
+  resolves to nothing. Generate it from Complianz's own wizard, which does cover
+  this document free, unlike the Privacy Statement.
+- Both pages must be **published**, not drafts, before Phase 17. A consent
+  banner linking to a draft is a 404 for every visitor who clicks it.
 - Ordering note: the roundup cannot be written before the reviews it points at,
   because `e4c_picks` stores a post object rather than a copied title.
 
-### Phase 15b: The site passes a full pre-launch QA sweep on real content.
+### Phase 15a (execution-assist): The Cookie Policy and Privacy Policy exist, are accurate, and are published.
+- Status: **in progress, opened 2026-08-14** at Casey's request. Split from
+  Phase 15 because it is a coherent unit that blocks launch on its own, while
+  the rest of Phase 15 is open-ended writing.
+- One-line goal: make the consent banner's links resolve to documents that
+  describe this site truthfully.
+- **The policy is written for the site as it is today, and that required
+  checking rather than assuming.** `theme/page-newsletter.php` ships no form
+  deliberately, and PLAN.md still lists choosing a provider (beehiiv or Kit) as
+  an open item below its cut line. So the site collects **no email addresses at
+  all**, and the draft says so. A policy describing a newsletter that does not
+  exist is as inaccurate as one omitting a newsletter that does, and the wrong
+  one is easier to write by reflex.
+- Facts the draft asserts, each traceable rather than boilerplate: analytics is
+  GA4 held behind Complianz's script blocker via `data-cmplz-src`, verified in
+  Phase 16; DNT and GPC are honoured, decided the same phase; Google's Data
+  Processing Terms accepted and data sharing disabled; no comments, which is why
+  Akismet is in `plugins.txt` as `:delete`; no forms; no payments; no ad
+  networks; affiliate links marked by `e4c-compliance` and disclosed per
+  article; backups to Google Drive at 14 days database and 4 weeks files, from
+  Phase 13.
+- Deferred deliberately: the newsletter paragraph, which the draft flags as the
+  expected next revision rather than pre-writing.
+- Not legal advice. The draft is a starting point for Casey to review.
 - Status: planned 2026-08-14. **The last phase before Phase 17 flips the site
   live.** Split from Phase 15 rather than folded into it, because "publish the
   content" and "prove the whole site is sound" are two deliverables and the
@@ -944,7 +991,13 @@ are execution-assist and each stays open across turns.
   - The affiliate disclosure appears on monetised posts and **only** on those,
     which is the whole reason `e4c-compliance` keys off a domain list.
   - Exactly one Article JSON-LD block per page, since Rank Math's schema module
-    is off precisely to prevent a second.
+    is off precisely to prevent a second. **Inherited from Phase 16, which could
+    not test it:** on 2026-08-14 the site had nothing published at all, so the
+    check had no target. The first attempt looked like a pass, printing `0`,
+    because the URL capture was empty and `curl` fetched nothing. An empty
+    string scoring zero occurrences is not evidence of anything, and the check
+    was rewritten to say `NOTHING PUBLISHED` rather than return a number. This
+    is the phase where it finally has an article to run against.
   - Internal links resolve, no self-inflicted 404s, and the roundup's picks
     point at published reviews rather than drafts.
   - Images: every one has alt text, and the hero uses the explicit dimensions
@@ -957,7 +1010,25 @@ are execution-assist and each stays open across turns.
   becomes its own phase rather than being fixed inline.
 
 ### Phase 16 (execution-assist): Consent, analytics and SEO are configured.
-- Status: planned 2026-08-13. **Runs before Phase 15**, resequenced 2026-08-14.
+- Status: **in progress, opened 2026-08-14.** Execution-assist, so it stays open
+  across turns until Casey's evidence lands. **Runs before Phase 15**,
+  resequenced 2026-08-14.
+- Four plugin-level conflicts identified before starting, each of which fails
+  silently rather than loudly, and each of which is why this is a walkthrough
+  rather than "run the wizard":
+  1. Rank Math's **Schema module** duplicates the `Article` JSON-LD that
+     `plugins/e4c-compliance` emits on single posts and pages. Two Article
+     blocks on a page is an error, not a tie-break.
+  2. Rank Math's **Nofollow External Links** would tag every outbound link,
+     which is exactly the behaviour `e4c-compliance` was written to avoid. It
+     keys off a domain list so editorial citations are not marked as paid
+     placements. Turning this on silently defeats that design.
+  3. Rank Math's **Redirections module** duplicates the `redirection` plugin
+     already installed from `plugins.txt`. Two redirect managers on one site is
+     a debugging trap.
+  4. The **GA4 tag must be injected by Complianz alone**, so it is gated on
+     consent. Rank Math's Analytics module may read data for reporting, but must
+     not install the tag, and Site Kit stays inactive for the same reason.
 - The earlier note claiming this was blocked on Phase 15 was wrong and is
   corrected here. Both wizards ask site-level questions: Complianz asks which
   services run, which is a function of GA4 and the plugin set rather than of how
@@ -966,6 +1037,22 @@ are execution-assist and each stays open across turns.
   review is written with the SEO fields already present rather than revisited.
 - One-line goal: the three plugins that need a one-time interview get it, in the
   order that avoids a duplicate-schema error.
+- **Decided 2026-08-14: Complianz honours Do Not Track and Global Privacy
+  Control.** The two are one toggle but not one thing. DNT is inert, its spec
+  discontinued by the W3C in 2019 and almost nothing transmits it. GPC is a
+  legally binding opt-out under California's CPRA, recognised in Colorado and
+  Connecticut, and enforced (the Sephora settlement, 2022). US traffic is a
+  certainty here, so this is a live compliance requirement rather than a
+  courtesy. Known cost, recorded so it is not later mistaken for a tracking bug:
+  visitors sending either signal are opted out of analytics without touching the
+  banner, so GA4 will read slightly below reality.
+- **Decided 2026-08-14: Complianz generates the Cookie Policy only.** Its
+  Privacy Statement, Imprint and Disclaimer generators are paid. Imprint is a
+  German, Austrian and Swiss requirement and does not apply. The Disclaimer is
+  redundant because `e4c-compliance` prints a per-article disclosure and the
+  footer bar. The Privacy Statement is required and comes from WordPress's own
+  generator instead, then is selected in Complianz as an existing page. See
+  Phase 15.
 - Known members: the Complianz wizard, the Rank Math wizard **with its
   rich-snippet module off**, and GA4 connected behind Complianz consent rather
   than hardcoded into the theme.
@@ -1004,6 +1091,22 @@ are execution-assist and each stays open across turns.
 - Ordering constraint already known: `blog_public` flips last, and the sitemap
   is submitted the same day, because submitting it while the site is noindexed
   teaches Search Console the sitemap is broken.
+- **Sharper version of that constraint, found 2026-08-14 in Phase 16.** The
+  sitemap cannot merely be *submitted* late, it cannot be *inspected* early:
+  Rank Math suppresses it entirely while `blog_public` is `0`, because serving a
+  sitemap from a site telling crawlers to stay away is contradictory.
+  `/sitemap_index.xml` returns nothing today.
+- That inverts the order inside this phase. The correct sequence is: flip
+  `blog_public` to `1`, **then verify the sitemap's contents**, and only then
+  submit it to Search Console. There is a window between the flip and the
+  submission where the sitemap must actually be read, and it cannot be moved
+  earlier.
+- Specifically, the thing to check in that window is which category taxonomy is
+  listed. Rank Math's wizard offered two checkboxes both labelled `Categories`
+  with `value="1"` on each, distinguishable only by registration order. The
+  sitemap should carry `cat-category` and **not** core `category`. That
+  verification was attempted in Phase 16 and could not run, for the reason
+  above. See Phase 21 for the underlying label collision.
 - These four belong together in one phase because they are one event. The site
   is either launched or it is not, and half of this list applied is a site that
   is indexed with no cache or cached with no index.
@@ -1051,8 +1154,11 @@ are execution-assist and each stays open across turns.
   it.
 
 ### Phase 20: The provisioner mirrors the theme set the live host actually has.
-- Status: planned 2026-08-14, requested by Casey after deleting
-  twentytwentythree and twentytwentyfour by hand on the live server.
+- Status: **complete 2026-08-14**, committed as `2aa9476`. Requested by Casey
+  after deleting twentytwentythree and twentytwentyfour by hand on the live
+  server. Verified in the container: three new checks pass and
+  `wp theme list` returns `theme` (active) and `twentytwentyfive` (inactive),
+  nothing else.
 - One-line goal: stop a rebuild resurrecting themes that were deliberately
   removed.
 - The gap, confirmed by reading `scripts/provision.sh`: it handles the repo
@@ -1074,8 +1180,213 @@ are execution-assist and each stays open across turns.
   harness currently asserts nothing about which themes exist, so it would not
   have caught this drift either.
 
+### Phase 21 (proposed, awaiting Casey's decision): One unambiguous category taxonomy, and selective new-tab on affiliate links.
+- Status: **proposed 2026-08-14, not approved.** Raised twice during Phase 16 and
+  left unanswered, so it is recorded here rather than dropped. Nothing blocks on
+  it, but doing it after content exists means re-tagging posts.
+- **Problem 1, the label collision.** `plugins/e4c-content/inc/taxonomies.php`
+  registers `cat-category` with the label `Categories`, byte-identical to core's
+  `category` label. Confirmed by listing public taxonomies in registration
+  order: `category` is first and `cat-category` is fourth, both labelled
+  `Categories`. The consequences are live already. Rank Math's sitemap screen
+  offered two identical `Categories` checkboxes with `value="1"` on both, so the
+  only way to tell them apart was registration order. A guide, being a core
+  post, carries **two meta boxes both labelled Categories** in the editor.
+- Likely fix: relabel ours to something distinct (`Topics` or
+  `Product Categories`), and unregister core `category` from `post` so only one
+  exists. The second half touches the theme's archive links and any existing
+  term assignments, which is why this is a phase and not a one-line edit.
+- **Problem 2, new-tab on affiliate links.** Rank Math's "Open External Links in
+  New Tab" was declined in Phase 16 because it applies to every outbound link,
+  including editorial citations, and unannounced new windows are a WCAG 3.2.5
+  concern. The wanted behaviour is real but selective, and `e4c-compliance`
+  already computes whether a link points at a monetised domain at the point it
+  builds the `rel` array. Adding `target` there is small and precise.
+- Grouped into one phase because both are corrections to how outbound and
+  taxonomy metadata are expressed, and both touch content authoring. Split them
+  if either grows.
+
+### Phase 22 (proposed): Apache sends security response headers on both vhosts.
+- Status: **proposed 2026-08-14**, found while declining Complianz's upsell of
+  Really Simple Security. Not a launch blocker, but cheap and permanent.
+- Verified gap, not assumed: `provision.sh` runs `a2enmod headers`, and no
+  `Header set` or `Header always` directive exists anywhere in the repository.
+  `docker/everything4cats.conf` has none. The only header reference in the whole
+  tree is the `X-Forwarded-Proto` check written into `wp-config.php` for TLS
+  detection, which is unrelated.
+- Why Apache rather than the security plugin that was just declined: headers in
+  the vhost cost nothing per request, cover static assets as well as PHP, and
+  cannot be silently dropped by a plugin update. Installing a plugin for this
+  would also put it outside `plugins.txt` and therefore outside the provisioner.
+- **The implementation constraint that decides the shape.** certbot owns the
+  `:443` vhost in its generated `-le-ssl.conf`, and `provision.sh` manages only
+  `:80`. Headers set on the plaintext vhost never reach an HTTPS visitor, which
+  is every real visitor. So this goes in a server-scope file under
+  `conf-available`, exactly as `docker/e4c-xmlrpc.conf` did and for the same
+  reason.
+- Candidate headers: `X-Content-Type-Options: nosniff`, `Referrer-Policy`,
+  `X-Frame-Options` or CSP `frame-ancestors`, and `Permissions-Policy` disabling
+  camera, microphone and geolocation, none of which this site uses.
+- **HSTS is deliberately called out as its own decision.** It is close to
+  irreversible: once a browser has seen the header it refuses plain HTTP for the
+  full max-age regardless of what the server later says. Start at a low max-age,
+  confirm nothing breaks, then raise it. Do not preload.
+- Content-Security-Policy is explicitly deferred out of this phase. GA4 and
+  Complianz both inject inline script, so a real CSP needs measurement in
+  report-only mode first and would swamp the rest of the work.
+
+### Phase 23 (proposed): GPS and camera metadata are stripped from uploads.
+- Status: **proposed 2026-08-14**, surfaced by a line in WordPress's own privacy
+  policy boilerplate while replacing it during Phase 15a. Not currently an
+  exposure, and becomes one with the first real product photograph.
+- **The risk, stated concretely.** This site's entire premise is products
+  photographed in Casey's home. Phone cameras write GPS coordinates into EXIF by
+  default. WordPress keeps the original upload alongside the sizes it generates,
+  and `theme/inc/template-helpers.php` renders through `wp_get_attachment_image`
+  with srcset, so full-size originals are served to browsers. A reader can
+  download a review photo and read the coordinates of the house it was taken in.
+- Not yet exposed: the only attachments are the logo and favicon, which are
+  graphics carrying no camera metadata. The window opens with the first photo.
+- Immediate mitigation, no code, recommended regardless of whether this phase is
+  ever built: disable location tagging in the phone's camera settings. It solves
+  the problem at the source.
+- Durable fix, which is what this phase is: strip EXIF on upload via
+  `wp_handle_upload` or the `big_image_size_threshold` pipeline, so it does not
+  depend on anyone remembering a camera setting. Worth checking whether the
+  hosting stack's imagick or GD path already discards metadata on resize, since
+  that changes the shape of the fix and only the untouched original may need
+  handling.
+- Sequencing note: cheapest before a photo library exists. Retrofitting means
+  re-processing every uploaded original.
+
+### Phase 24: The theme renders an arbitrary page in full.
+- Status: **complete 2026-08-14** in the repo, verified in the container at 64
+  checks. The live site still needs the deploy, which is a `git pull` on the
+  host. Found while verifying the published Privacy Policy.
+- **The bug.** `theme/` has no `page.php`. WordPress walks the hierarchy
+  (`page-{slug}`, `page-{id}`, `page`, `singular`, `index`) and lands on
+  `index.php`, which loops results through `template-parts/card-post.php`. That
+  card renders `esc_html( wp_trim_words( $e4c_dek, 26 ) )`. So a page with no
+  bespoke template is published as **a 26-word card**, with all markup stripped.
+- Confirmed by measurement, not by reading. The stored content of page 3 is
+  correct: `post_status=publish` and 28 `wp:heading` markers, meaning 14
+  headings saved intact. The rendered HTML contains 2 `<h2>` (both Complianz's),
+  0 `<table>`, and no link to the Cookie Policy. Storage was never the problem
+  and two rounds of blaming the block editor's paste handling were wrong.
+- **Both legally required documents are affected**, and the consent banner links
+  to both. `page-how-we-test.php` and `page-newsletter.php` work only because
+  they are matched by slug, which is what hid the gap: every page that existed
+  before today had its own template.
+- Files to touch: `theme/page.php` (new), `scripts/test-provision/verify.sh`.
+- Functions to add or change: none. This is a template file.
+- Reuse audit: searched `the_content()`, `the_excerpt`, `page-`, `e4c-article`.
+  `page-how-we-test.php:61` and `page-newsletter.php:54` both wrap
+  `the_content()` in `<div class="e4c-article">`, but both hardcode page-specific
+  furniture around it and neither generalises. `single.php:71` is the closest
+  structural model and is for posts, not pages. The `e4c-article` and
+  `e4c-page-title` classes already exist in `style.css`, so no CSS is added.
+- Simplest approach considered: header, title, `the_content()`, footer, with no
+  furniture of its own. Adopted. The two bespoke templates keep precedence
+  automatically through the hierarchy, so this only ever catches pages that
+  currently fall through to a card.
+- Scenarios: a page with no bespoke template renders headings, tables and links
+  intact; `page-how-we-test.php` and `page-newsletter.php` still win for their
+  slugs; a page assigned a Template Name still wins; an empty page renders
+  without notices.
+- Verification (three bullets):
+  - The harness creates a page containing an `h2` and a `table`, fetches it, and
+    asserts both survive to the rendered HTML.
+  - `bash scripts/test-provision/run.sh` still exits 0 with the existing checks.
+  - On the live site, `/privacy-policy/` returns about 11 `<h2>`, one
+    `cookie-policy-ca` href, and 1 `<table>`.
+- Deferred: any styling of the generic page. It inherits `e4c-article`, which is
+  what the other two templates use, and a bespoke look is not a launch concern.
+
 ## Phase reports
 <!-- pasted at Stage 5, newest first -->
+
+### Phase 24, 2026-08-14
+
+**Changed.** One new file, `theme/page.php`. Two checks added to
+`scripts/test-provision/verify.sh`. `README.md` gains build log Step 13.
+
+**The bug, and why it hid for so long.** The theme had no `page.php`, so
+WordPress walked the hierarchy past `page-{slug}`, `page-{id}`, `page` and
+`singular` and landed on `index.php`, an archive template that loops results
+through `template-parts/card-post.php` and renders
+`esc_html( wp_trim_words( $dek, 26 ) )`. Any page without a bespoke template was
+published as a 26-word card with all markup stripped. Both the Privacy Policy
+and the Cookie Policy were in that state, with the consent banner linking to
+each. It stayed invisible because the only two pages that had ever existed,
+How we test and Newsletter, are matched by slug, so the fallback path had never
+been exercised.
+
+**Tested.** `bash scripts/test-provision/run.sh`, exit 0, `ALL CHECKS PASSED`,
+64 checks against the previous 62.
+
+**The new checks were proven to fail first**, which mattered more than usual
+here. `page.php` was renamed away inside a throwaway container and verification
+re-run: exactly the two new checks went red, everything else stayed green, exit
+code 2. Restored, they pass. A check added beside a fix that would have passed
+regardless is decoration, and this bug had already survived 62 of them.
+
+**Sample Page is the probe, and it is read-only.** It exists on any fresh
+install, carries 204 words so `Doohickey` sits far past the 26-word trim, and
+contains block quotes that `esc_html` cannot leave intact. Creating a fixture
+inside `verify.sh` would have broken its read-only contract for no extra
+signal.
+
+**Three wrong diagnoses preceded the right one**, all recorded because the
+pattern is the lesson. First the block editor's paste handling was blamed, twice.
+Then a badly written grep matched `cookiedatabase.org` and was read as evidence
+the Cookie Policy link existed. Only checking the *stored* post content, which
+was byte-perfect with 28 `wp:heading` markers, moved the search from content to
+rendering. A missing template does not error, it silently renders through a less
+specific one, and that failure presents as a content problem.
+
+**Deferred.** Styling for the generic page, which inherits `e4c-article` like
+the other two templates. The live deploy, which is Casey's.
+
+### Phase 20, 2026-08-14
+
+**Changed.** One new file, `scripts/themes.txt`, plus a themes loop in
+`scripts/provision.sh`, three checks in `scripts/test-provision/verify.sh`, and
+`README.md` gaining the file in its Layout block and build log Step 12.
+
+**Tested.** `bash scripts/test-provision/run.sh`, exit 0, `ALL CHECKS PASSED`.
+The three new checks, read back from the built image because the run was piped
+through `tail -30` and truncated them:
+
+```
+PASS  twentytwentyfive present                   1
+PASS  twentytwentyfour                           MISSING
+PASS  twentytwentythree                          MISSING
+```
+
+Confirmed independently with `wp theme list`, which returns `theme` (active) and
+`twentytwentyfive` (inactive) and nothing else.
+
+**Decisions.** The list lives in its own file rather than hardcoded in
+`provision.sh`, matching the reasoning that produced `plugins.txt` when Akismet
+and Hello Dolly were deleted by hand. twentytwentyfive is kept as the fallback,
+at Casey's call, so a fatal in `theme/` degrades to an ugly site rather than a
+white screen.
+
+**One ordering detail worth keeping.** The loop runs after theme activation,
+because a theme cannot be deleted while active, and it skips rather than dies if
+a theme marked for deletion is the active one. That is a real state on a host
+provisioned before `THEME_DIR` exists.
+
+**Process note.** The first harness invocation was piped through `tail -30`,
+which discarded the very checks the phase existed to add. Exit 0 and `ALL CHECKS
+PASSED` were still authoritative, but the evidence had to be re-read from the
+image afterwards. Pipe the harness through `tail -80` or nothing at all when the
+point is to see specific checks.
+
+**Deferred.** The rest of the README Layout staleness, which is Phase 19. Only
+the `themes.txt` line was added here; `theme/` and `plugins/e4c-content/` are
+still missing from that block and the line beneath it still claims the base
+theme is not in the repository.
 
 ### Phase 14, 2026-08-13
 
