@@ -25,7 +25,7 @@ get_header();
 while ( have_posts() ) :
 	the_post();
 	?>
-	<article <?php post_class( 'e4c-shell e4c-review' ); ?>>
+	<article <?php post_class( 'e4c-shell e4c-shell--narrow e4c-review' ); ?>>
 
 		<div class="e4c-review__head">
 			<div>
@@ -33,6 +33,19 @@ while ( have_posts() ) :
 				<h1><?php the_title(); ?></h1>
 				<p class="e4c-review__dek"><?php echo esc_html( e4c_method_statement() ); ?></p>
 			</div>
+
+			<?php
+			/*
+			 * Optional. The head is a two-column grid, so without a thumbnail
+			 * the second column simply stays empty and the text keeps its
+			 * width. Nothing here depends on the image existing.
+			 */
+			?>
+			<?php if ( has_post_thumbnail() ) : ?>
+				<figure class="e4c-hero__figure">
+					<?php e4c_hero_image( (int) get_post_thumbnail_id(), 'e4c-hero' ); ?>
+				</figure>
+			<?php endif; ?>
 		</div>
 
 		<section class="e4c-panel e4c-pledge" aria-labelledby="e4c-pledge-label">
@@ -58,14 +71,19 @@ while ( have_posts() ) :
 			</ul>
 		</section>
 
-		<div class="e4c-article"><?php the_content(); ?></div>
+		<div class="e4c-review__body">
 
-		<section class="e4c-panel e4c-pledge" aria-labelledby="e4c-vet-label">
+			<div class="e4c-article"><?php the_content(); ?></div>
+
+			<aside class="e4c-cols">
+			<section class="e4c-panel e4c-pledge" aria-labelledby="e4c-vet-label">
 			<span class="e4c-verdict__label" id="e4c-vet-label"><?php esc_html_e( 'Where we stop', 'e4c' ); ?></span>
 			<p class="e4c-verdict__line">
 				<?php esc_html_e( 'We review objects, not medicine. Anything touching illness, medication or a change of diet is a question for your vet, who has met your cat. We will tell you when a question is one of those.', 'e4c' ); ?>
 			</p>
-		</section>
+			</section>
+			</aside>
+		</div>
 	</article>
 	<?php
 endwhile;

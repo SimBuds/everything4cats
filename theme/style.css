@@ -93,6 +93,13 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-skip:focus { left: 0; }
 
 .e4c-shell { max-width: var(--e4c-page-max); margin: 0 auto; padding-inline: var(--e4c-gutter); }
+/* For pages that are one column of prose plus a rail. The full 1440px shell
+   leaves a text page sitting against the left edge with several hundred pixels
+   of nothing to its right. 1040px is the body measure plus the rail plus both
+   gutters, so the article fills its shell and .e4c-shell's auto margins centre
+   the whole thing. Narrowing the shell rather than centring the inner blocks is
+   what keeps the head, the panels and the body on one shared left edge. */
+.e4c-shell--narrow { max-width: 1040px; }
 
 /* Disclosure bar. The wording is the compliance plugin's when it renders one;
    this bar is the site's standing method statement, not a paid-link notice. */
@@ -227,15 +234,26 @@ img, svg, video { max-width: 100%; height: auto; }
 	display: flex; flex-direction: column; gap: var(--e4c-gap-3);
 }
 .e4c-card__media { border-radius: var(--wp--custom--radius-media); overflow: hidden; background: var(--e4c-page); }
-.e4c-card__media img { display: block; width: 100%; height: auto; }
+/* 4:3 to match the e4c-card size (800x600). Enforced here rather than trusted
+   from that size for the same reason as the hero: it is a hard crop, WordPress
+   never upscales, and an undersized or portrait upload silently falls back to
+   the full-size original. On the Reviews archive that rendered one card image
+   at the full width and height of the page. */
+.e4c-card__media img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .e4c-card__title { margin: 0; font-size: var(--wp--preset--font-size--title); }
 .e4c-card__title a { color: inherit; text-decoration: none; }
 .e4c-card__title a:hover { color: var(--e4c-brand-text); }
 .e4c-card__dek { margin: 0; color: var(--e4c-ink-muted); }
 .e4c-card__meta { margin: 0; font-size: var(--wp--preset--font-size--meta); color: var(--e4c-ink-meta); }
-.e4c-grid { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+/* auto-fill, not auto-fit. auto-fit collapses the empty tracks, so a single
+   review stretched one card across the whole 1344px shell. auto-fill keeps the
+   tracks, so one card is card-sized and the grid fills left to right. */
+.e4c-grid { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 
-.e4c-main { padding-bottom: var(--wp--preset--spacing--70); }
+/* No bottom padding. .e4c-footer already carries margin-top: spacing--70, and
+   both together put about 144px between the last line of a page and the
+   footer rule. The footer's margin is the single source of that gap. */
+.e4c-main { padding-bottom: 0; }
 .e4c-section { padding-block: var(--wp--preset--spacing--50); }
 .e4c-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--e4c-gap-3); margin-bottom: var(--wp--preset--spacing--30); }
 .e4c-section__head h2 { margin: 0; font-size: var(--wp--preset--font-size--heading-section); }
@@ -245,19 +263,69 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-hero__lede { margin:0 0 var(--e4c-gap-6); font-size: var(--wp--preset--font-size--lede); line-height: 1.55; max-width: 52ch; color: var(--e4c-ink-muted); }
 .e4c-hero__actions { display: flex; flex-wrap: wrap; gap: var(--e4c-gap-3); align-items: center; }
 .e4c-hero__figure { margin: 0; }
-.e4c-hero__figure img { display: block; width: 100%; height: auto; border-radius: var(--wp--custom--radius-card); background: var(--e4c-surface); }
+/* The 16:9 is enforced here and not left to the e4c-hero image size, because
+   that size is a hard crop and WordPress never upscales: an image narrower
+   than 1600px or shorter than 900px simply never gets the crop generated, and
+   wp_get_attachment_image() falls back to the full-size original at whatever
+   shape the editor uploaded. That failure is silent and looks like a design
+   bug rather than an upload one. Found on 2026-08-14, when a portrait upload
+   produced a hero roughly 725px tall against 245px of title and dek, leaving
+   about 445px of empty column beside it.
+
+   object-fit: cover means the worst an undersized upload can now do is look
+   soft, not break the layout. */
+.e4c-hero__figure img {
+	display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+	border-radius: var(--wp--custom--radius-card); background: var(--e4c-surface);
+}
 
 /* Review */
-.e4c-review { padding-block: var(--wp--preset--spacing--50); }
-.e4c-review__head { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--wp--preset--spacing--50); align-items: start; }
+/* Top padding only. e4c-main already contributes padding-bottom, and carrying
+   both put roughly 128px between the last line of a review and the footer. */
+.e4c-review { padding-block: var(--wp--preset--spacing--40) 0; }
+/* center, not start. The title, dek and byline are always shorter than the
+   hero image, so aligning both to the top hangs the text off the ceiling with
+   a gap under it. Centring makes the two columns read as one unit whatever the
+   title wraps to. */
+.e4c-review__head { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--wp--preset--spacing--50); align-items: center; }
+
+/* The image gets the smaller share once there is room for two columns. At an
+   even 50/50 a 16:9 hero on a 1440px shell is about 700px wide, which reads as
+   a banner rather than a supporting image. auto-fit still handles the stack
+   below this width, so the split is only stated where two columns exist. */
+@media (min-width: 860px) {
+	.e4c-review__head { grid-template-columns: 1.25fr 0.75fr; }
+}
 .e4c-review__head h1 { margin: var(--e4c-gap-3) 0 var(--e4c-gap-4); font-size: var(--wp--preset--font-size--heading-page); }
 .e4c-review__dek { margin:0 0 var(--e4c-gap-5); font-size: var(--wp--preset--font-size--lede); color: var(--e4c-ink-muted); max-width: 46ch; }
 .e4c-review__byline { margin: 0; font-size: var(--wp--preset--font-size--meta); color: var(--e4c-ink-meta); }
 .e4c-verdict { margin-block: var(--wp--preset--spacing--40); display: grid; gap: var(--e4c-gap-4); }
 .e4c-verdict__label { font-size: var(--wp--preset--font-size--eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--e4c-second-text); }
 .e4c-verdict__line { margin: 0; font-family: var(--wp--preset--font-family--display); font-size: var(--wp--preset--font-size--heading-sub); line-height: 1.2; }
+/* Stepped down inside the rail. heading-sub is 32px, which is right for the
+   verdict panel spanning the page and far too big in a 300px column. */
+.e4c-cols .e4c-verdict__line { font-size: var(--wp--preset--font-size--lede); }
 .e4c-verdict__price { font-size: var(--wp--preset--font-size--title-lg); font-weight: 700; }
-.e4c-cols { display: grid; gap: var(--wp--preset--spacing--40); margin-block: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+/* Held to the same measure as the article body below it. Without the cap the
+   pros and cons ran the full width of the shell while the prose underneath was
+   capped at 62ch, so the body looked like a third column sitting inside the
+   "What works" section rather than a new section. One shared left and right
+   edge is what makes it read as a sequence. minmax drops to 200px because two
+   columns inside 62ch is about 245px each, and 260px would have collapsed it
+   to a single column. */
+/* The review body: prose on the left, the pros and cons rail on the right.
+   The rail used to sit above the prose at full width, which left the 62ch body
+   looking like a column inside the "What works" section and wasted ~800px of
+   page down the right. Inside the rail the two lists stack rather than sitting
+   side by side. */
+.e4c-review__body { display: grid; gap: var(--wp--preset--spacing--50); align-items: start; }
+.e4c-cols { display: grid; gap: var(--wp--preset--spacing--40); }
+
+@media (min-width: 960px) {
+	.e4c-review__body {
+		grid-template-columns: minmax(0, var(--wp--custom--measure-body)) minmax(220px, 300px);
+	}
+}
 /* A block that follows the article body and shares its measure, so it lines up
    with the prose above rather than running the full width of the shell. */
 .e4c-after-article { margin-top: var(--wp--preset--spacing--50); max-width: var(--wp--custom--measure-body); }
@@ -269,6 +337,9 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-specs { width: 100%; border-collapse: collapse; font-size: var(--wp--preset--font-size--small); }
 .e4c-specs th, .e4c-specs td { text-align: left; padding: var(--e4c-gap-3) 0; border-bottom: 1px solid var(--e4c-rule); vertical-align: top; }
 .e4c-specs th { width: 40%; font-weight: 700; color: var(--e4c-ink-muted); }
+/* The table's last rule had nothing under it but page, so it read as the start
+   of a row that never came. */
+.e4c-specs tr:last-child th, .e4c-specs tr:last-child td { border-bottom: 0; }
 .e4c-buy { display: flex; flex-wrap: wrap; gap: var(--e4c-gap-2); align-items: center; }
 .e4c-buy__note { font-size: var(--wp--preset--font-size--caption); color: var(--e4c-ink-meta); }
 
@@ -407,7 +478,10 @@ img, svg, video { max-width: 100%; height: auto; }
 /* The pledge panels on the methodology and newsletter pages. Same surface as
    the verdict panel, which is deliberate: both are the site making a claim it
    can be held to. */
-.e4c-pledge { margin-block: var(--wp--preset--spacing--40); max-width: var(--wp--custom--measure); }
+.e4c-pledge { margin-block: var(--wp--preset--spacing--30); max-width: var(--wp--custom--measure); }
+/* First thing in the rail, so it aligns with the top of the prose beside it
+   rather than starting a step lower. */
+.e4c-cols .e4c-pledge { margin-block: 0; }
 .e4c-pledge .e4c-list { margin-top: var(--e4c-gap-3); }
 
 /* Core's search form, which get_search_form() emits on the 404 and search

@@ -29,7 +29,7 @@ function e4c_content_register_fields(): void {
 		'key'                   => 'group_e4c_review',
 		'title'                 => __( 'Review', 'e4c-content' ),
 		'menu_order'            => 0,
-		'position'              => 'acf_after_title',
+		'position'              => 'side',
 		'style'                 => 'default',
 		'label_placement'       => 'top',
 		'active'                => true,
@@ -40,6 +40,12 @@ function e4c_content_register_fields(): void {
 			),
 		),
 		'fields'                => array(
+			array(
+				'key'       => 'field_e4c_tab_summary',
+				'label'     => __( 'Summary', 'e4c-content' ),
+				'type'      => 'tab',
+				'placement' => 'top',
+			),
 			array(
 				'key'         => 'field_e4c_dek',
 				'label'       => __( 'Dek', 'e4c-content' ),
@@ -81,11 +87,17 @@ function e4c_content_register_fields(): void {
 				'instructions' => __( 'Outbound link. The compliance plugin tags it and adds the rel attributes; do not add tracking parameters by hand.', 'e4c-content' ),
 			),
 			array(
+				'key'       => 'field_e4c_tab_verdictpoints',
+				'label'     => __( 'Pros and cons', 'e4c-content' ),
+				'type'      => 'tab',
+				'placement' => 'top',
+			),
+			array(
 				'key'          => 'field_e4c_pros',
 				'label'        => __( 'What works', 'e4c-content' ),
 				'name'         => 'e4c_pros',
 				'type'         => 'repeater',
-				'layout'       => 'table',
+				'layout'       => 'block',
 				'button_label' => __( 'Add point', 'e4c-content' ),
 				'min'          => 0,
 				'max'          => 6,
@@ -94,7 +106,8 @@ function e4c_content_register_fields(): void {
 						'key'   => 'field_e4c_pro_text',
 						'label' => __( 'Point', 'e4c-content' ),
 						'name'  => 'text',
-						'type'  => 'text',
+						'type'  => 'textarea',
+						'rows'  => 2,
 					),
 				),
 			),
@@ -103,7 +116,7 @@ function e4c_content_register_fields(): void {
 				'label'        => __( 'What does not', 'e4c-content' ),
 				'name'         => 'e4c_cons',
 				'type'         => 'repeater',
-				'layout'       => 'table',
+				'layout'       => 'block',
 				'button_label' => __( 'Add point', 'e4c-content' ),
 				'min'          => 0,
 				'max'          => 6,
@@ -112,16 +125,23 @@ function e4c_content_register_fields(): void {
 						'key'   => 'field_e4c_con_text',
 						'label' => __( 'Point', 'e4c-content' ),
 						'name'  => 'text',
-						'type'  => 'text',
+						'type'  => 'textarea',
+						'rows'  => 2,
 					),
 				),
+			),
+			array(
+				'key'       => 'field_e4c_tab_specs',
+				'label'     => __( 'Specs', 'e4c-content' ),
+				'type'      => 'tab',
+				'placement' => 'top',
 			),
 			array(
 				'key'          => 'field_e4c_specs',
 				'label'        => __( 'Specifications', 'e4c-content' ),
 				'name'         => 'e4c_specs',
 				'type'         => 'repeater',
-				'layout'       => 'table',
+				'layout'       => 'block',
 				'button_label' => __( 'Add row', 'e4c-content' ),
 				'sub_fields'   => array(
 					array(
@@ -144,7 +164,7 @@ function e4c_content_register_fields(): void {
 	acf_add_local_field_group( array(
 		'key'             => 'group_e4c_roundup',
 		'title'           => __( 'Roundup', 'e4c-content' ),
-		'position'        => 'acf_after_title',
+		'position'        => 'side',
 		'label_placement' => 'top',
 		'active'          => true,
 		'show_in_rest'    => true,
@@ -167,7 +187,7 @@ function e4c_content_register_fields(): void {
 				'label'        => __( 'Picks', 'e4c-content' ),
 				'name'         => 'e4c_picks',
 				'type'         => 'repeater',
-				'layout'       => 'row',
+				'layout'       => 'block',
 				'button_label' => __( 'Add pick', 'e4c-content' ),
 				'sub_fields'   => array(
 					array(

@@ -134,6 +134,38 @@ belongs on a local container and nowhere else. `.gitignore` already covers
 `*.gz`, `*.zip` and `backup_*`, and those patterns match at any depth, so
 `backups/` needs no rule of its own. The script prints no row contents.
 
+### The loop
+
+`up.sh` once per session, `restore.sh` once if you want real content, then
+**edit and refresh**. A save to `theme/` or `plugins/` is live on the next page
+load and there is nothing to re-run.
+
+Four inputs are baked into the image instead, so a running container cannot see
+changes to them. After editing `plugins.txt`, `themes.txt`, `provision.sh` or
+anything in `docker/`, rebuild with `scripts/test-provision/run.sh`, then
+`down.sh` and `up.sh`.
+
+`down.sh` destroys everything typed into wp-admin, because the database lives in
+an image layer. Leave the container up between sessions and run it when a clean
+slate is wanted. `restore.sh` replays production, not your edits, so test
+content is re-entered rather than recovered.
+
+### Before deploying
+
+`theme/` and `plugins/` reach the server by symlink from the checkout, so a
+`git pull` is the whole deploy and a syntax error is live immediately. There is
+no PHP binary on the development machine, but the staging container has one and
+the working tree is mounted at `/repo`:
+
+```bash
+# ON HOST
+docker exec e4c-staging php -l /repo/theme/single-review.php
+```
+
+Lint every PHP file the diff touches. A parse error inside `plugins/e4c-content`
+is not a broken template: that plugin loads on every request, so it takes out
+`wp-admin` too and the recovery is over SSH.
+
 **What staging cannot prove:** TLS issuance, DNS, SES delivery, or anything
 Google must reach inward for, such as Search Console verification and sitemap
 submission. Those are launch-day steps on the real host.

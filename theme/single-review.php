@@ -96,39 +96,43 @@ while ( have_posts() ) :
 			</section>
 		<?php endif; ?>
 
-		<?php if ( $e4c_pros || $e4c_cons ) : ?>
-			<section class="e4c-cols">
-				<?php if ( $e4c_pros ) : ?>
-					<div>
-						<h2 class="e4c-section-title"><?php esc_html_e( 'What works', 'e4c' ); ?></h2>
-						<ul class="e4c-list e4c-list--pros">
-							<?php foreach ( (array) $e4c_pros as $e4c_row ) : ?>
-								<?php $e4c_text = is_array( $e4c_row ) ? ( $e4c_row['text'] ?? '' ) : $e4c_row; ?>
-								<?php if ( $e4c_text ) : ?>
-									<li><span class="e4c-list__mark" aria-hidden="true">&plus;</span><span><?php echo esc_html( $e4c_text ); ?></span></li>
-								<?php endif; ?>
-							<?php endforeach; ?>
-						</ul>
-					</div>
-				<?php endif; ?>
 
-				<?php if ( $e4c_cons ) : ?>
-					<div>
-						<h2 class="e4c-section-title"><?php esc_html_e( 'What does not', 'e4c' ); ?></h2>
-						<ul class="e4c-list e4c-list--cons">
-							<?php foreach ( (array) $e4c_cons as $e4c_row ) : ?>
-								<?php $e4c_text = is_array( $e4c_row ) ? ( $e4c_row['text'] ?? '' ) : $e4c_row; ?>
-								<?php if ( $e4c_text ) : ?>
-									<li><span class="e4c-list__mark" aria-hidden="true">&minus;</span><span><?php echo esc_html( $e4c_text ); ?></span></li>
-								<?php endif; ?>
-							<?php endforeach; ?>
-						</ul>
-					</div>
-				<?php endif; ?>
-			</section>
-		<?php endif; ?>
+		<div class="e4c-review__body">
 
-		<div class="e4c-article"><?php the_content(); ?></div>
+			<div class="e4c-article"><?php the_content(); ?></div>
+
+			<?php if ( $e4c_pros || $e4c_cons ) : ?>
+				<aside class="e4c-cols">
+					<?php if ( $e4c_pros ) : ?>
+						<div>
+							<h2 class="e4c-section-title"><?php esc_html_e( 'What works', 'e4c' ); ?></h2>
+							<ul class="e4c-list e4c-list--pros">
+								<?php foreach ( (array) $e4c_pros as $e4c_row ) : ?>
+									<?php $e4c_text = is_array( $e4c_row ) ? ( $e4c_row['text'] ?? '' ) : $e4c_row; ?>
+									<?php if ( $e4c_text ) : ?>
+										<li><span class="e4c-list__mark" aria-hidden="true">&plus;</span><span><?php echo esc_html( $e4c_text ); ?></span></li>
+									<?php endif; ?>
+								<?php endforeach; ?>
+							</ul>
+						</div>
+					<?php endif; ?>
+
+					<?php if ( $e4c_cons ) : ?>
+						<div>
+							<h2 class="e4c-section-title"><?php esc_html_e( 'What does not', 'e4c' ); ?></h2>
+							<ul class="e4c-list e4c-list--cons">
+								<?php foreach ( (array) $e4c_cons as $e4c_row ) : ?>
+									<?php $e4c_text = is_array( $e4c_row ) ? ( $e4c_row['text'] ?? '' ) : $e4c_row; ?>
+									<?php if ( $e4c_text ) : ?>
+										<li><span class="e4c-list__mark" aria-hidden="true">&minus;</span><span><?php echo esc_html( $e4c_text ); ?></span></li>
+									<?php endif; ?>
+								<?php endforeach; ?>
+							</ul>
+						</div>
+					<?php endif; ?>
+				</aside>
+			<?php endif; ?>
+		</div>
 
 		<?php if ( $e4c_specs ) : ?>
 			<section class="e4c-after-article">
