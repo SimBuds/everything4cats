@@ -25,65 +25,33 @@ get_header();
 while ( have_posts() ) :
 	the_post();
 	?>
-	<article <?php post_class( 'e4c-shell e4c-shell--narrow e4c-review' ); ?>>
+	<article <?php post_class( 'e4c-shell e4c-shell--narrow e4c-review e4c-artgrid' ); ?>>
 
-		<div class="e4c-review__head">
-			<div>
-				<span class="e4c-tag"><?php esc_html_e( 'Methodology', 'e4c' ); ?></span>
-				<h1><?php the_title(); ?></h1>
-				<p class="e4c-review__dek"><?php echo esc_html( e4c_method_statement() ); ?></p>
-			</div>
+		<?php
+		/*
+		 * One grid for the whole page, with the pieces placed rather than
+		 * nested. That is what lets the eyebrow render in the rail above the
+		 * image while staying first in the source, immediately before the h1 it
+		 * labels. Moving it in the markup instead put it after the title and
+		 * the lede, so a screen reader met "How we test" before "Methodology".
+		 * Visual position is CSS; reading order is the markup.
+		 */
+		?>
+		<span class="e4c-tag"><?php esc_html_e( 'Methodology', 'e4c' ); ?></span>
+		<h1><?php the_title(); ?></h1>
+		<p class="e4c-review__dek"><?php echo esc_html( e4c_method_statement() ); ?></p>
 
-			<?php
-			/*
-			 * Optional. The head is a two-column grid, so without a thumbnail
-			 * the second column simply stays empty and the text keeps its
-			 * width. Nothing here depends on the image existing.
-			 */
-			?>
-			<?php if ( has_post_thumbnail() ) : ?>
-				<figure class="e4c-hero__figure">
-					<?php e4c_hero_image( (int) get_post_thumbnail_id(), 'e4c-hero' ); ?>
-				</figure>
-			<?php endif; ?>
-		</div>
+		<div class="e4c-article"><?php the_content(); ?></div>
 
-		<section class="e4c-panel e4c-pledge" aria-labelledby="e4c-pledge-label">
-			<span class="e4c-verdict__label" id="e4c-pledge-label"><?php esc_html_e( 'What we promise', 'e4c' ); ?></span>
+		<aside class="e4c-cols">
 
-			<ul class="e4c-list e4c-list--pros">
-				<li>
-					<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
-					<span><?php esc_html_e( 'We buy what we test. Nothing here was sent to us in exchange for coverage.', 'e4c' ); ?></span>
-				</li>
-				<li>
-					<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
-					<span><?php esc_html_e( 'Every product spends real time in a real house with real cats before it is written about.', 'e4c' ); ?></span>
-				</li>
-				<li>
-					<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
-					<span><?php esc_html_e( 'We say when something is not worth buying, and we say why.', 'e4c' ); ?></span>
-				</li>
-				<li>
-					<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
-					<span><?php esc_html_e( 'Commissions never decide what gets covered or what we conclude about it.', 'e4c' ); ?></span>
-				</li>
-			</ul>
-		</section>
+				<?php if ( has_post_thumbnail() ) : ?>
+					<figure class="e4c-hero__figure">
+						<?php e4c_hero_image( (int) get_post_thumbnail_id(), 'e4c-hero' ); ?>
+					</figure>
+				<?php endif; ?>
 
-		<div class="e4c-review__body">
-
-			<div class="e4c-article"><?php the_content(); ?></div>
-
-			<aside class="e4c-cols">
-			<section class="e4c-panel e4c-pledge" aria-labelledby="e4c-vet-label">
-			<span class="e4c-verdict__label" id="e4c-vet-label"><?php esc_html_e( 'Where we stop', 'e4c' ); ?></span>
-			<p class="e4c-verdict__line">
-				<?php esc_html_e( 'We review objects, not medicine. Anything touching illness, medication or a change of diet is a question for your vet, who has met your cat. We will tell you when a question is one of those.', 'e4c' ); ?>
-			</p>
-			</section>
-			</aside>
-		</div>
+		</aside>
 	</article>
 	<?php
 endwhile;

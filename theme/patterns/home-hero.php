@@ -39,8 +39,34 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 	<!-- /wp:group -->
 
+	<?php
+	/*
+	 * The hero image is the front page's Featured image, set in WordPress like
+	 * any other, and emitted only when one exists.
+	 *
+	 * This block used to ship `<img alt="" width="1600" height="900" />` with no
+	 * src. That is the ordinary idiom for a pattern being inserted in the
+	 * editor, where it renders as an empty image block to fill. The problem is
+	 * that front-page.php also renders this pattern straight to the front end
+	 * when the front page has no content of its own, and there the placeholder
+	 * became invalid markup holding open half the hero grid and showing
+	 * nothing. Found during the theme QA on 2026-08-14.
+	 *
+	 * With no featured image the figure is absent entirely, auto-fit collapses
+	 * the empty track, and the text takes the full width instead of sitting
+	 * beside a hole.
+	 *
+	 * Reuses e4c_hero_image(), which already sets eager/sync/high: this is the
+	 * one image on the site that is always above the fold.
+	 */
+	$e4c_hero_id = (int) get_post_thumbnail_id( (int) get_option( 'page_on_front' ) );
+	if ( $e4c_hero_id ) :
+		?>
 	<!-- wp:image {"sizeSlug":"e4c-hero","className":"e4c-hero__figure"} -->
-	<figure class="wp-block-image size-e4c-hero e4c-hero__figure"><img alt="" width="1600" height="900" /></figure>
+	<figure class="wp-block-image size-e4c-hero e4c-hero__figure"><?php e4c_hero_image( $e4c_hero_id, 'e4c-hero' ); ?></figure>
 	<!-- /wp:image -->
+		<?php
+	endif;
+	?>
 </section>
 <!-- /wp:group -->

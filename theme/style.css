@@ -52,8 +52,10 @@ Tags: blog, custom-menu, editor-style, block-patterns
 	   375px screen has only a few pixels of slack once the logo and both
 	   buttons are on it. `ui` is left in theme.json rather than deleted: it is
 	   offered to the block editor, and removing a preset orphans any published
-	   content already carrying has-ui-font-size. Same reasoning for spacing--20,
-	   which the stylesheet also no longer uses. */
+	   content already carrying has-ui-font-size. It has a caller again as of
+	   2026-08-14: it is the size both rail panels settled on, sitting between
+	   the 15px the promise list wanted and the 17px the vet note wanted.
+	   spacing--20 is still unused and kept on the same reasoning. */
 	--e4c-control-h: 40px;
 	--e4c-control-pad-x: 20px;
 	--e4c-control-fs: var(--wp--preset--font-size--small);
@@ -100,6 +102,33 @@ img, svg, video { max-width: 100%; height: auto; }
    the whole thing. Narrowing the shell rather than centring the inner blocks is
    what keeps the head, the panels and the body on one shared left edge. */
 .e4c-shell--narrow { max-width: 1040px; }
+
+/* The article grid, shared by every template that wants prose on the left and
+   a rail on the right. One grid for the page, with each piece placed explicitly, so
+   the eyebrow can render in the rail above the image while remaining first in
+   the source right before the h1 it labels. Replaced .e4c-review__intro, which
+   nested the eyebrow with the title and so could not put it anywhere else.
+
+   Below 960px this is all one column in source order, which is already the
+   right reading order: eyebrow, title, lede, prose, then the rail.
+
+   A template that omits the eyebrow simply leaves row 1 of the rail empty;
+   nothing else moves. */
+.e4c-artgrid > h1 { margin: var(--e4c-gap-3) 0 var(--e4c-gap-4); font-size: var(--wp--preset--font-size--heading-page); }
+
+@media (min-width: 960px) {
+	.e4c-artgrid {
+		display: grid;
+		grid-template-columns: minmax(0, var(--wp--custom--measure-body)) minmax(220px, 300px);
+		column-gap: var(--wp--preset--spacing--50);
+		align-items: start;
+	}
+	.e4c-artgrid > .e4c-tag         { grid-row: 1; grid-column: 2; justify-self: start; }
+	.e4c-artgrid > h1               { grid-row: 1; grid-column: 1; }
+	.e4c-artgrid > .e4c-review__dek { grid-row: 2; grid-column: 1; }
+	.e4c-artgrid > .e4c-article     { grid-row: 3; grid-column: 1; }
+	.e4c-artgrid > .e4c-cols        { grid-row: 2 / 4; grid-column: 2; }
+}
 
 /* Disclosure bar. The wording is the compliance plugin's when it renders one;
    this bar is the site's standing method statement, not a paid-link notice. */
@@ -317,9 +346,21 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-verdict { margin-block: var(--wp--preset--spacing--40); display: grid; gap: var(--e4c-gap-4); }
 .e4c-verdict__label { font-size: var(--wp--preset--font-size--eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--e4c-second-text); }
 .e4c-verdict__line { margin: 0; font-family: var(--wp--preset--font-family--display); font-size: var(--wp--preset--font-size--heading-sub); line-height: 1.2; }
-/* Stepped down inside the rail. heading-sub is 32px, which is right for the
-   verdict panel spanning the page and far too big in a 300px column. */
-.e4c-cols .e4c-verdict__line { font-size: var(--wp--preset--font-size--lede); }
+/* Stepped right down inside the rail. heading-sub is 32px in the display face,
+   which is right for a verdict panel spanning the page and shouts in a 300px
+   column. In the rail this is a standing note, not a headline, so it drops to
+   the text face at body weight and reads as prose. */
+.e4c-cols .e4c-verdict__line {
+	font-family: var(--wp--preset--font-family--text);
+	font-size: var(--wp--preset--font-size--ui);
+	font-weight: 400;
+	line-height: 1.5;
+	color: var(--e4c-ink-muted);
+}
+
+/* Taller than the 16:9 used for a full-width hero. At rail width 16:9 is a
+   letterbox strip; 3:2 gives the image enough height to read as a photograph. */
+.e4c-cols .e4c-hero__figure img { aspect-ratio: 3 / 2; }
 .e4c-verdict__price { font-size: var(--wp--preset--font-size--title-lg); font-weight: 700; }
 /* Held to the same measure as the article body below it. Without the cap the
    pros and cons ran the full width of the shell while the prose underneath was
@@ -335,20 +376,40 @@ img, svg, video { max-width: 100%; height: auto; }
    side by side. */
 .e4c-review__body { display: grid; gap: var(--wp--preset--spacing--50); align-items: start; }
 .e4c-cols { display: grid; gap: var(--wp--preset--spacing--40); }
+/* .e4c-cols is a grid, so a tag would stretch to the full rail width and stop
+   looking like a chip. */
+.e4c-cols .e4c-tag { justify-self: start; }
 
 @media (min-width: 960px) {
 	.e4c-review__body {
 		grid-template-columns: minmax(0, var(--wp--custom--measure-body)) minmax(220px, 300px);
 	}
+
+	/* The rail rises past the intro so the image sits level with the lede
+	   rather than starting below it. Only the rail moves: the prose keeps its
+	   spacing under the intro. Safe because the intro spans the full width but
+	   its lede is capped at 46ch, so there is nothing at the rail's x position
+	   to collide with. */
+	.e4c-review__body > .e4c-cols { margin-top: calc(-1 * var(--wp--preset--spacing--60)); }
 }
 /* A block that follows the article body and shares its measure, so it lines up
    with the prose above rather than running the full width of the shell. */
 .e4c-after-article { margin-top: var(--wp--preset--spacing--50); max-width: var(--wp--custom--measure-body); }
 .e4c-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--e4c-gap-2); font-size: var(--wp--preset--font-size--body); }
 .e4c-list li { display: grid; grid-template-columns: 22px 1fr; gap: var(--e4c-gap-2); align-items: start; }
-.e4c-list__mark { font-weight: 700; }
-.e4c-list--pros .e4c-list__mark { color: var(--e4c-brand-text); }
-.e4c-list--cons .e4c-list__mark { color: var(--e4c-second-text); }
+
+/* The mark is generated, not marked up. It used to be a <span
+   class="e4c-list__mark" aria-hidden="true"> inside every list item, which is
+   fine in a PHP template and impossible in editable content: an author writing
+   a block list would have to maintain a marker span per item and would see a
+   stray + or - in the editor. Generating it means a plain block list gets the
+   same treatment.
+
+   The `/ ""` is the alt text, and it is what keeps the mark out of the
+   accessibility tree, replacing the aria-hidden the span used to carry. */
+.e4c-list li::before { font-weight: 700; content: "" / ""; }
+.e4c-list--pros li::before { content: "+" / ""; color: var(--e4c-brand-text); }
+.e4c-list--cons li::before { content: "\2212" / ""; color: var(--e4c-second-text); }
 .e4c-specs { width: 100%; border-collapse: collapse; font-size: var(--wp--preset--font-size--small); }
 .e4c-specs th, .e4c-specs td { text-align: left; padding: var(--e4c-gap-3) 0; border-bottom: 1px solid var(--e4c-rule); vertical-align: top; }
 .e4c-specs th { width: 40%; font-weight: 700; color: var(--e4c-ink-muted); }
@@ -362,7 +423,17 @@ img, svg, video { max-width: 100%; height: auto; }
    article body. Do not render a second disclosure here: the plugin honours
    _e4c_post_affiliate already, and two notices would word the same duty twice. */
 .e4c-article { max-width: var(--wp--custom--measure-body); }
-.e4c-article > * + * { margin-top: 1.1em; }
+/* Prose rhythm. One flat 1.1em between every pair of blocks meant a heading
+   opened a section with the same gap that separated two paragraphs inside one,
+   so the column read as evenly spaced rather than structured, and looser than
+   it needed to be. Paragraphs tighten; headings take the space instead.
+   Note the em is relative to each element's own size, so 1.6em above an h2 is
+   45px while 0.85em between paragraphs is 14px. */
+.e4c-article > * + * { margin-top: 0.85em; }
+.e4c-article p { line-height: 1.6; }
+.e4c-article h2 { margin-top: 1.6em; margin-bottom: 0; }
+.e4c-article h3 { margin-top: 1.4em; margin-bottom: 0; }
+.e4c-article ul, .e4c-article ol { line-height: 1.6; }
 .e4c-article .art-disclose {
 	margin: 0 0 1.4em; padding: var(--e4c-gap-3) var(--e4c-gap-4);
 	background: var(--e4c-second-tint); color: var(--e4c-second-deep);
@@ -497,7 +568,10 @@ img, svg, video { max-width: 100%; height: auto; }
 /* First thing in the rail, so it aligns with the top of the prose beside it
    rather than starting a step lower. */
 .e4c-cols .e4c-pledge { margin-block: 0; }
-.e4c-pledge .e4c-list { margin-top: var(--e4c-gap-3); }
+/* One step down from the 17px .e4c-list default. The pledge only ever renders
+   in the rail, where four multi-line points at body size compete with the prose
+   beside them instead of supporting it. */
+.e4c-pledge .e4c-list { margin-top: var(--e4c-gap-3); font-size: var(--wp--preset--font-size--ui); }
 
 /* Core's search form, which get_search_form() emits on the 404 and search
    templates. Styled rather than replaced with a custom form: core's markup is

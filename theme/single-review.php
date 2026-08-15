@@ -110,7 +110,7 @@ while ( have_posts() ) :
 								<?php foreach ( (array) $e4c_pros as $e4c_row ) : ?>
 									<?php $e4c_text = is_array( $e4c_row ) ? ( $e4c_row['text'] ?? '' ) : $e4c_row; ?>
 									<?php if ( $e4c_text ) : ?>
-										<li><span class="e4c-list__mark" aria-hidden="true">&plus;</span><span><?php echo esc_html( $e4c_text ); ?></span></li>
+										<li><?php echo esc_html( $e4c_text ); ?></li>
 									<?php endif; ?>
 								<?php endforeach; ?>
 							</ul>
@@ -124,7 +124,7 @@ while ( have_posts() ) :
 								<?php foreach ( (array) $e4c_cons as $e4c_row ) : ?>
 									<?php $e4c_text = is_array( $e4c_row ) ? ( $e4c_row['text'] ?? '' ) : $e4c_row; ?>
 									<?php if ( $e4c_text ) : ?>
-										<li><span class="e4c-list__mark" aria-hidden="true">&minus;</span><span><?php echo esc_html( $e4c_text ); ?></span></li>
+										<li><?php echo esc_html( $e4c_text ); ?></li>
 									<?php endif; ?>
 								<?php endforeach; ?>
 							</ul>

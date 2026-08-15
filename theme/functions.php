@@ -20,3 +20,4 @@ require_once get_theme_file_path( 'inc/setup.php' );
 require_once get_theme_file_path( 'inc/assets.php' );
 require_once get_theme_file_path( 'inc/patterns.php' );
 require_once get_theme_file_path( 'inc/template-helpers.php' );
+require_once get_theme_file_path( 'inc/admin-image-check.php' );
