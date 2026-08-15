@@ -176,15 +176,18 @@ img, svg, video { max-width: 100%; height: auto; }
 /* The nav links and both actions cannot share one row below this width, so the
    links drop to their own centred row instead of the buttons breaking off.
 
-   Lowered from 1120px to 1000px on 2026-08-14. 1120px was calibrated against
-   the old controls, which were 44px tall with 18px of padding. The current ones
-   are 32px with 14px, and the row now needs roughly 905px of viewport: 180px of
-   logo, 371px of nav, 210px of buttons, 48px of column gaps and two 48px
-   gutters. 1120px was therefore breaking the header onto two rows across a
-   215px band where it fitted comfortably. 1000px keeps about 95px of slack for
-   the fact that those label widths are estimated from character counts rather
-   than measured, and for a fifth nav item later. */
-@media (max-width: 1080px) {
+   980px is measured, not estimated. At a 1062px viewport the row occupies
+   195px of logo, 385px of nav, 250px of buttons, 48px of column gaps and two
+   42px gutters: 962px. 980px leaves a small margin over that.
+
+   The two previous values here were both wrong in the same way, and it is worth
+   recording why. 1120px was calibrated against the older, larger controls and
+   never revisited. 1080px replaced it on 2026-08-14 using character-count
+   estimates, which put the nav at 436px against a real 385px, so the header
+   still broke onto two rows across a 112px band where it fitted perfectly well.
+   Guessing at rendered text width does not work; this number came off a
+   screenshot. */
+@media (max-width: 980px) {
 	.e4c-nav { order: 3; flex: 1 1 100%; }
 	.e4c-brand { flex: 1 1 auto; }
 	.e4c-actions { flex: 0 0 auto; }
