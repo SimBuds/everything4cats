@@ -104,16 +104,12 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-shell--narrow { max-width: 1040px; }
 
 /* The article grid, shared by every template that wants prose on the left and
-   a rail on the right. One grid for the page, with each piece placed explicitly, so
-   the eyebrow can render in the rail above the image while remaining first in
-   the source right before the h1 it labels. Replaced .e4c-review__intro, which
-   nested the eyebrow with the title and so could not put it anywhere else.
+   a rail on the right. Each piece is placed explicitly rather than nested, so
+   the layout can change without the markup moving: source order stays eyebrow,
+   title, lede, prose, rail, which is the correct reading order, and the visual
+   arrangement is decided here.
 
-   Below 960px this is all one column in source order, which is already the
-   right reading order: eyebrow, title, lede, prose, then the rail.
-
-   A template that omits the eyebrow simply leaves row 1 of the rail empty;
-   nothing else moves. */
+   Below 960px this collapses to that same one-column order. */
 .e4c-artgrid > h1 { margin: var(--e4c-gap-3) 0 var(--e4c-gap-4); font-size: var(--wp--preset--font-size--heading-page); }
 
 @media (min-width: 960px) {
@@ -123,11 +119,13 @@ img, svg, video { max-width: 100%; height: auto; }
 		column-gap: var(--wp--preset--spacing--50);
 		align-items: start;
 	}
-	.e4c-artgrid > .e4c-tag         { grid-row: 1; grid-column: 2; justify-self: start; }
-	.e4c-artgrid > h1               { grid-row: 1; grid-column: 1; }
-	.e4c-artgrid > .e4c-review__dek { grid-row: 2; grid-column: 1; }
-	.e4c-artgrid > .e4c-article     { grid-row: 3; grid-column: 1; }
-	.e4c-artgrid > .e4c-cols        { grid-row: 2 / 4; grid-column: 2; }
+	/* Column 1 is the whole article, eyebrow first. Column 2 is the rail,
+	   spanning every row so the image starts level with the eyebrow. */
+	.e4c-artgrid > .e4c-tag         { grid-row: 1; grid-column: 1; justify-self: start; }
+	.e4c-artgrid > h1               { grid-row: 2; grid-column: 1; }
+	.e4c-artgrid > .e4c-review__dek { grid-row: 3; grid-column: 1; }
+	.e4c-artgrid > .e4c-article     { grid-row: 4; grid-column: 1; }
+	.e4c-artgrid > .e4c-cols        { grid-row: 1 / 5; grid-column: 2; }
 }
 
 /* Disclosure bar. The wording is the compliance plugin's when it renders one;
@@ -510,6 +508,13 @@ img, svg, video { max-width: 100%; height: auto; }
    do not repeat the inline style= attributes the earlier ones carry. */
 .e4c-page-title { margin: 0; font-size: var(--wp--preset--font-size--heading-page); }
 .e4c-page-lede { margin: 0; color: var(--e4c-ink-muted); max-width: 44ch; }
+/* Stacked under the title rather than flush against it. .e4c-section__head is
+   justify-content: space-between, which is right for a heading with an action
+   link opposite it and wrong for a heading with its own lede: it threw a whole
+   sentence to the far edge of the page. The archive templates now wrap the
+   title group in a div, as the taxonomy and search heads already did, so the
+   lede sits under the title and the head has one child to align. */
+.e4c-page-title + .e4c-page-lede { margin-top: var(--e4c-gap-3); }
 .e4c-section-title { margin: 0 0 var(--wp--preset--spacing--30); font-size: var(--wp--preset--font-size--heading-minor); }
 
 /* Facets. Used three ways: subcategory links on a term archive, the post-type

@@ -21,8 +21,10 @@ get_header();
 ?>
 <div class="e4c-shell e4c-section">
 	<div class="e4c-section__head">
-		<h1 class="e4c-page-title"><?php esc_html_e( 'Best', 'e4c' ); ?></h1>
-		<p class="e4c-page-lede"><?php esc_html_e( 'Every product in these lists was bought and used. Rank comes from testing, never from what a link pays.', 'e4c' ); ?></p>
+		<div>
+			<h1 class="e4c-page-title"><?php esc_html_e( 'Best', 'e4c' ); ?></h1>
+			<p class="e4c-page-lede"><?php esc_html_e( 'Every product in these lists was bought and used. Rank comes from testing, never from what a link pays.', 'e4c' ); ?></p>
+		</div>
 	</div>
 
 	<?php if ( have_posts() ) : ?>
