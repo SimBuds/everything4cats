@@ -51,6 +51,35 @@ while ( have_posts() ) :
 					</figure>
 				<?php endif; ?>
 
+				<section class="e4c-panel e4c-pledge" aria-labelledby="e4c-pledge-label">
+					<span class="e4c-verdict__label" id="e4c-pledge-label"><?php esc_html_e( 'What we promise', 'e4c' ); ?></span>
+
+					<ul class="e4c-list e4c-list--pros">
+						<li>
+							<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
+							<span><?php esc_html_e( 'We buy what we test. Nothing here was sent to us in exchange for coverage.', 'e4c' ); ?></span>
+						</li>
+						<li>
+							<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
+							<span><?php esc_html_e( 'Every product spends real time in a real house with real cats before it is written about.', 'e4c' ); ?></span>
+						</li>
+						<li>
+							<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
+							<span><?php esc_html_e( 'We say when something is not worth buying, and we say why.', 'e4c' ); ?></span>
+						</li>
+						<li>
+							<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
+							<span><?php esc_html_e( 'Commissions never decide what gets covered or what we conclude about it.', 'e4c' ); ?></span>
+						</li>
+					</ul>
+				</section>
+
+				<section class="e4c-panel e4c-pledge" aria-labelledby="e4c-vet-label">
+					<span class="e4c-verdict__label" id="e4c-vet-label"><?php esc_html_e( 'Where we stop', 'e4c' ); ?></span>
+					<p class="e4c-verdict__line">
+						<?php esc_html_e( 'We review objects, not medicine. Anything touching illness, medication or a change of diet is a question for your vet, who has met your cat. We will tell you when a question is one of those.', 'e4c' ); ?>
+					</p>
+					</section>
 		</aside>
 	</article>
 	<?php
