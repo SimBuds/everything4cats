@@ -63,15 +63,12 @@ while ( have_posts() ) :
 
 			<ul class="e4c-list e4c-list--pros">
 				<li>
-					<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
 					<span><?php esc_html_e( 'You confirm by email before anything is sent. If you do not confirm, you hear nothing.', 'e4c' ); ?></span>
 				</li>
 				<li>
-					<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
 					<span><?php esc_html_e( 'Every email carries a one-click unsubscribe, and it works immediately.', 'e4c' ); ?></span>
 				</li>
 				<li>
-					<span class="e4c-list__mark" aria-hidden="true">&plus;</span>
 					<span><?php esc_html_e( 'We never sell or share the list.', 'e4c' ); ?></span>
 				</li>
 			</ul>
