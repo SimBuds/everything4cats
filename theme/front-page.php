@@ -16,10 +16,28 @@ get_header();
 	<?php
 	/*
 	 * A front page assigned in Settings > Reading renders its own blocks, which
-	 * is how the hero and patch patterns get edited. With no page assigned the
-	 * theme falls back to the pattern markup so a fresh install is not blank.
+	 * is how the hero and patch patterns get edited. With no page assigned, or
+	 * with one still empty, the theme falls back to the pattern markup so the
+	 * top of the page is never blank.
+	 *
+	 * The condition tests the assigned page and its content rather than
+	 * have_posts(), which was the original test and covered neither. On a static
+	 * front page the loop always holds exactly one post, so have_posts() was
+	 * permanently true and this fallback could never run: an empty front page
+	 * rendered an empty top of page. On "Your latest posts" the loop is the blog
+	 * loop instead, so the fallback appeared only while nothing was published,
+	 * and the first post to go live would have replaced the hero with a stack of
+	 * full post bodies.
+	 *
+	 * The homepage was therefore correct only by accident, and which accident
+	 * applied depended on a Reading setting nobody had checked. Found on
+	 * 2026-08-14 while answering how the homepage is edited from wp-admin.
 	 */
-	if ( have_posts() ) :
+	$e4c_front_id          = (int) get_option( 'page_on_front' );
+	$e4c_front_has_content = $e4c_front_id
+		&& '' !== trim( (string) get_post_field( 'post_content', $e4c_front_id ) );
+
+	if ( $e4c_front_has_content ) :
 		while ( have_posts() ) :
 			the_post();
 			the_content();
