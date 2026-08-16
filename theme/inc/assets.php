@@ -66,6 +66,36 @@ function e4c_enqueue_assets(): void {
 		array(),
 		file_exists( $path ) ? (string) filemtime( $path ) : E4C_THEME_VERSION
 	);
+
+	$nav = get_theme_file_path( 'assets/nav.js' );
+
+	if ( file_exists( $nav ) ) {
+		wp_enqueue_script(
+			'e4c-nav',
+			get_theme_file_uri( 'assets/nav.js' ),
+			array(),
+			(string) filemtime( $nav ),
+			true
+		);
+	}
+}
+
+add_action( 'wp_head', 'e4c_js_class', 1 );
+/**
+ * Marks the document as scripted, before anything paints.
+ *
+ * The header menu collapses behind a toggle only when this class is present, so
+ * a reader without JavaScript keeps a nav that works and never sees a button
+ * that cannot open anything.
+ *
+ * Inline and in the head on purpose. nav.js is deferred to the footer, which is
+ * right for behaviour and wrong for this one class: adding it there would let
+ * the browser paint the expanded nav first and then collapse it, which is a
+ * visible flash on every page load. Four lines in the head costs less than the
+ * request it avoids, and there is nothing here worth caching separately.
+ */
+function e4c_js_class(): void {
+	echo "<script>document.documentElement.classList.add('e4c-js');</script>\n";
 }
 
 add_action( 'after_setup_theme', 'e4c_editor_styles' );

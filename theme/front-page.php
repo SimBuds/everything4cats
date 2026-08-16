@@ -43,7 +43,18 @@ get_header();
 			the_content();
 		endwhile;
 	else :
-		echo do_blocks( '<!-- wp:pattern {"slug":"e4c/home-hero"} /-->' );
+		/*
+		 * wp_filter_content_tags() is the pass that adds srcset, sizes and the
+		 * loading/fetchpriority hints to images. It is hooked to the_content,
+		 * so the branch above gets it for free and this one does not: do_blocks()
+		 * alone would serve the hero at a single resolution with no LCP hint.
+		 *
+		 * Applied here rather than by putting those attributes in the pattern,
+		 * because the pattern is also insertable content and hardcoded
+		 * render-time attributes make the image block invalid in the editor.
+		 * See the note in patterns/home-hero.php.
+		 */
+		echo wp_filter_content_tags( do_blocks( '<!-- wp:pattern {"slug":"e4c/home-hero"} /-->' ) );
 	endif;
 	?>
 

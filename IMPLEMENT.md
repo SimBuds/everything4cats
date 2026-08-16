@@ -4,7 +4,8 @@
 <!-- The only current-state snapshot in the repository. PLAN.md and README.md
      both point here rather than keeping their own, because two snapshots
      guarantee one is wrong. Both were carrying stale ones until 2026-08-14. -->
-- Active phase: none.
+- Active phase: none. **Next is Phase 15d**, which is Casey's writing rather
+  than engineering, and nothing blocks it.
 - Last completed phase: Phase 26b, 2026-08-14. The site is live at
   https://everything4cats.ca
 - Phase status roll-call: **1 to 16 complete**, including 8, 8b, 15a, and
@@ -16,18 +17,44 @@
   `restore.sh` loads an UpdraftPlus set into it. Until 2026-08-14 there was no
   way to look at a change before it reached production, and four theme changes
   that day were verified by arithmetic rather than by eye as a result.
-- **Theme work landed 2026-08-14 and is not phased**, because it was
-  small-and-visual rather than planned: control sizes normalised onto two
-  tokens, a 4px gap ladder replacing thirteen hand-picked spacing values, all
-  inline styles removed from templates, the footer column and header
-  breakpoints recalibrated. Recorded in the git history rather than here.
+- **Theme work landed 2026-08-14 and 2026-08-15 and is not phased**, because it
+  was small-and-visual rather than planned. On 08-14: control sizes normalised
+  onto two tokens, a 4px gap ladder replacing thirteen hand-picked spacing
+  values, all inline styles removed from templates, the footer column and header
+  breakpoints recalibrated. On 08-15: `.e4c-artgrid` introduced as the one
+  prose-plus-rail layout and adopted by `template-article-rail.php` and
+  `page-how-we-test.php`, the two pledge panels extracted to block patterns, the
+  pros and cons marks moved from marked-up spans to generated `::before`
+  content so an editable block list gets them too, prose rhythm split so
+  headings open sections rather than every gap being equal, the header
+  breakpoint measured off a screenshot at 980px after two estimated values were
+  both wrong, and `front-page.php` given a fallback for no assigned page.
+  Recorded in the git history rather than here.
+- **`theme/inc/admin-image-check.php` closes the undersized-hero trap**, added
+  2026-08-15. WordPress never upscales, so a hard crop smaller than
+  1600x900 is silently never generated and the full-size original is served at
+  whatever shape it is. That was diagnosed as a layout fault twice before anyone
+  read the pixel dimensions. The CSS now pins the aspect ratios and this notice
+  catches the cause at the point it is created.
 - **Remaining before launch: Phase 15d** (Casey's reviews and a roundup), then
   **15b** (QA sweep), then **17** (the flip). Nothing else blocks, and 15d is
   writing rather than engineering.
 - Proposed and unapproved, none of them launch blockers: **18** repeater
-  fallback, **19** stale README opening sections, **21** the duplicate
-  `Categories` label, **22** Apache security headers, **23** EXIF stripping on
-  upload.
+  fallback, **21** the duplicate `Categories` label, **22** Apache security
+  headers, **23** EXIF stripping on upload. Phase 19 was listed here as well
+  until 2026-08-16 and should not have been, because the bullet above already
+  records it as folded into the 08-14 documentation sweep. One phase cannot be
+  both done and unapproved, and a roll-call that contradicts itself two bullets
+  apart is worse than one that is merely out of date.
+- **The affiliate domain list now reports its own coverage**, added 2026-08-16.
+  `e4c_compliance_affiliate_domains` is still empty and unregistered, which is
+  correct while no programme is joined, but empty is also the state it reaches
+  by nobody doing anything. A Site Health test in `plugins/e4c-compliance`
+  scans published content for outbound hosts that are not on the list and names
+  them, so the question is asked on the day an affiliate link is first pasted
+  rather than on the day someone thinks to check. It cannot know which hosts
+  are monetised and does not guess: an editorial citation appearing in that
+  list is the check working and being answered no.
 - Two checks are deliberately owed to later phases rather than skipped: the
   JSON-LD count per page (Phase 15b, needs published content) and the sitemap's
   taxonomy list (Phase 17, suppressed while `blog_public` is `0`).

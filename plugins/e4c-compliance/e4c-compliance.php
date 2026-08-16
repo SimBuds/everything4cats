@@ -386,3 +386,248 @@ function e4c_compliance_styles() {
 	);
 }
 add_action( 'wp_enqueue_scripts', 'e4c_compliance_styles' );
+
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE EMPTY-LIST TRAP
+ * ---------------------------------------------------------------------------
+ *
+ * Everything above keys off e4c_compliance_affiliate_domains(), which is empty
+ * until a filter is registered. Empty is the correct state today: no programme
+ * has been joined, so nothing is monetised and tagging or disclosing anything
+ * would be a misstatement.
+ *
+ * The trap is that the list stays empty by doing nothing, and joining a
+ * programme is a separate act in a separate place. On the day an affiliate
+ * link is first pasted into an article, this plugin's two structural
+ * guarantees quietly do not apply to it: no rel="sponsored nofollow", and no
+ * disclosure unless the author also ticked _e4c_post_affiliate by hand. That
+ * hand-tick is exactly the "documented convention an author remembers" that
+ * the file header rejects as a defence.
+ *
+ * Nothing here can know which domains are monetised, and guessing is the
+ * original sin this design exists to avoid. What it can do is refuse to let
+ * the question go unasked: report the outbound hosts that published content
+ * actually links to, minus the ones already on the list, and let a human say
+ * which are commercial. An editorial citation showing up here is not a fault,
+ * it is the check working and being answered "no".
+ */
+
+/**
+ * Every outbound link host in published content, with a post count.
+ *
+ * Internal links are excluded by comparing against the home host, so a site
+ * that links to itself does not register. The affiliate list is deliberately
+ * NOT applied here: this is the raw scan, and it is what gets cached.
+ *
+ * Cached because it parses post bodies and Site Health runs it on a page load.
+ * The cache is dropped whenever a post is saved, so the answer cannot lag the
+ * content that changed it.
+ *
+ * @return array<string,int> Host => number of published posts linking to it.
+ */
+function e4c_compliance_outbound_hosts() {
+	$cached = get_transient( 'e4c_compliance_outbound_hosts' );
+
+	if ( is_array( $cached ) ) {
+		return $cached;
+	}
+
+	global $wpdb;
+
+	// LIMIT is a guard against this becoming slow on a site far larger than
+	// this one is planned to be, not a correctness boundary. If it is ever hit,
+	// the check has stopped being complete and that is worth knowing.
+	$contents = $wpdb->get_col(
+		"SELECT post_content FROM {$wpdb->posts}
+		 WHERE post_status = 'publish'
+		   AND post_type NOT IN ('attachment', 'revision', 'nav_menu_item')
+		 LIMIT 500"
+	);
+
+	$home  = strtolower( (string) wp_parse_url( home_url(), PHP_URL_HOST ) );
+	$hosts = array();
+
+	foreach ( (array) $contents as $content ) {
+		if ( false === strpos( (string) $content, 'href' ) ) {
+			continue;
+		}
+
+		if ( ! preg_match_all( '/<a\s[^>]*href=(["\'])(.*?)\1/i', $content, $matches ) ) {
+			continue;
+		}
+
+		// Per post, not per link: three links to one shop is one post to check,
+		// and counting links would make a comparison table look like a crisis.
+		$seen = array();
+
+		foreach ( $matches[2] as $href ) {
+			$host = strtolower( (string) wp_parse_url( $href, PHP_URL_HOST ) );
+
+			if ( '' === $host || isset( $seen[ $host ] ) ) {
+				continue;
+			}
+
+			// Internal, including subdomains of the site's own host.
+			if ( $host === $home || str_ends_with( $host, '.' . $home ) ) {
+				continue;
+			}
+
+			/*
+			 * `www.` is dropped so the report names the value that belongs on
+			 * the list rather than the value that happened to be in the href.
+			 * e4c_compliance_is_affiliate_host() matches subdomains, so
+			 * `chewy.com` covers `www.chewy.com` while `www.chewy.com` does
+			 * NOT cover a bare or differently-prefixed link. Reporting the
+			 * href host verbatim invites copying the narrower one, which fails
+			 * silently and in the direction that omits a disclosure.
+			 *
+			 * Only `www.` is stripped. Any other subdomain stays visible,
+			 * because `shop.example.com` being monetised does not imply the
+			 * parent is, and that is the author's call rather than this
+			 * function's.
+			 */
+			if ( str_starts_with( $host, 'www.' ) ) {
+				$host = substr( $host, 4 );
+			}
+
+			if ( '' === $host || isset( $seen[ $host ] ) ) {
+				continue;
+			}
+
+			$seen[ $host ]  = true;
+			$hosts[ $host ] = isset( $hosts[ $host ] ) ? $hosts[ $host ] + 1 : 1;
+		}
+	}
+
+	arsort( $hosts );
+
+	set_transient( 'e4c_compliance_outbound_hosts', $hosts, HOUR_IN_SECONDS );
+
+	return $hosts;
+}
+
+/**
+ * Outbound hosts that are not covered by the affiliate list.
+ *
+ * The list is subtracted here rather than inside the cached scan above, and
+ * that split is the whole point. The scan is a function of the content and is
+ * invalidated by saving a post. The affiliate list is a function of code, and
+ * registering the filter fires no save hook at all. Caching the subtraction
+ * would mean adding a domain and still being told for the next hour that it is
+ * undeclared, which teaches the reader to disbelieve the check.
+ *
+ * @return array<string,int> Host => number of published posts linking to it.
+ */
+function e4c_compliance_unlisted_outbound_hosts() {
+	$unlisted = array();
+
+	foreach ( e4c_compliance_outbound_hosts() as $host => $count ) {
+		if ( ! e4c_compliance_is_affiliate_host( $host ) ) {
+			$unlisted[ $host ] = $count;
+		}
+	}
+
+	return $unlisted;
+}
+
+/**
+ * Drop the scan cache when content changes.
+ */
+function e4c_compliance_flush_outbound_cache() {
+	delete_transient( 'e4c_compliance_outbound_hosts' );
+}
+add_action( 'save_post', 'e4c_compliance_flush_outbound_cache' );
+add_action( 'deleted_post', 'e4c_compliance_flush_outbound_cache' );
+
+/**
+ * Site Health test: are any linked outbound hosts monetised but undeclared?
+ *
+ * Reported at Tools > Site Health rather than as an admin notice. A notice on
+ * every screen for a condition that is usually correct is a notice that gets
+ * dismissed and then ignored on the day it matters.
+ *
+ * The three outcomes are deliberately not "pass, warn, fail":
+ *
+ *   - Nothing links out at all: green. There is nothing to declare.
+ *   - The list is populated and covers everything linked: green.
+ *   - Something links out that is not on the list: orange, with the hosts
+ *     named. Orange rather than red because an editorial citation is the
+ *     expected answer and is not a defect.
+ *
+ * @return array Site Health result.
+ */
+function e4c_compliance_site_health_affiliate() {
+	$listed   = e4c_compliance_affiliate_domains();
+	$unlisted = e4c_compliance_unlisted_outbound_hosts();
+
+	$result = array(
+		'label'       => __( 'Affiliate links are tagged and disclosed', 'e4c' ),
+		'status'      => 'good',
+		'badge'       => array(
+			'label' => __( 'Compliance', 'e4c' ),
+			'color' => 'blue',
+		),
+		'description' => '',
+		'actions'     => '',
+		'test'        => 'e4c_compliance_affiliate',
+	);
+
+	if ( ! $unlisted ) {
+		if ( $listed ) {
+			$result['description'] = '<p>' . sprintf(
+				/* translators: %d: number of declared affiliate domains. */
+				esc_html__( 'Every outbound link in published content points at one of the %d declared affiliate domains, so each is tagged sponsored nofollow and its article carries a disclosure.', 'e4c' ),
+				count( $listed )
+			) . '</p>';
+		} else {
+			$result['description'] = '<p>' . esc_html__( 'No affiliate programme is declared and no published post links to an outside site, so there is nothing to tag or disclose. This is the expected state before the first programme is joined.', 'e4c' ) . '</p>';
+		}
+
+		return $result;
+	}
+
+	$result['status'] = 'recommended';
+	$result['label']  = __( 'Outbound links point at hosts that are not declared affiliate domains', 'e4c' );
+
+	$items = '';
+	foreach ( $unlisted as $host => $count ) {
+		$items .= sprintf(
+			'<li><code>%1$s</code> %2$s</li>',
+			esc_html( $host ),
+			esc_html( sprintf(
+				/* translators: %d: number of posts linking to this host. */
+				_n( 'in %d published post', 'in %d published posts', $count, 'e4c' ),
+				$count
+			) )
+		);
+	}
+
+	$result['description'] =
+		'<p>' . esc_html__( 'These hosts are linked from published content and are not on the affiliate domain list. Links to them are left exactly as written: no sponsored nofollow, and no disclosure on the article.', 'e4c' ) . '</p>'
+		. '<ul>' . $items . '</ul>'
+		. '<p>' . esc_html__( 'That is correct for an editorial citation and wrong for a monetised link. Add any host you earn from to the list, in the theme functions file or a site plugin:', 'e4c' ) . '</p>'
+		. '<pre>add_filter( \'e4c_compliance_affiliate_domains\', function ( $d ) {'
+		. "\n\t" . '$d[] = \'' . esc_html( (string) array_key_first( $unlisted ) ) . '\';'
+		. "\n\t" . 'return $d;'
+		. "\n" . '} );</pre>'
+		. '<p>' . esc_html__( 'Subdomains are covered automatically, so the bare domain is the right entry.', 'e4c' ) . '</p>';
+
+	$result['actions'] = '<p>' . esc_html__( 'A link monetised by a discount code rather than by the URL will never appear here. Tick "This post has affiliate links" on the post itself for that case.', 'e4c' ) . '</p>';
+
+	return $result;
+}
+
+/**
+ * Register the test.
+ */
+function e4c_compliance_register_site_health( $tests ) {
+	$tests['direct']['e4c_compliance_affiliate'] = array(
+		'label' => __( 'Affiliate disclosure coverage', 'e4c' ),
+		'test'  => 'e4c_compliance_site_health_affiliate',
+	);
+
+	return $tests;
+}
+add_filter( 'site_status_tests', 'e4c_compliance_register_site_health' );

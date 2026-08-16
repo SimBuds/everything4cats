@@ -158,11 +158,18 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-nav { flex: 0 1 auto; }
 .e4c-nav ul { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--e4c-gap-1); list-style: none; margin: 0; padding: 0; }
 /* Nav links are not buttons, but they share a row with two of them, so they
-   take the control height. Anything else leaves the header uneven. Moved from
-   the small step to the default one on 2026-08-14, following the buttons. */
+   take the control HEIGHT. Anything else leaves the header uneven.
+
+   The horizontal padding is the small step, and the split is deliberate. Height
+   is what makes the row read as one row, so it follows the buttons. Width is
+   pure cost: four links at the default 20px each side spend 160px of the header
+   on padding alone, and that is what pushed the one-row breakpoint up to 980px.
+   At 14px they spend 112px, which buys 48px back and moves the breakpoint down
+   to where the row genuinely stops fitting. A text link does not need a
+   button's horizontal padding to be clickable, and the hover pill still reads. */
 .e4c-nav a {
 	display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap;
-	min-height: var(--e4c-control-h); padding: 0 var(--e4c-control-pad-x);
+	min-height: var(--e4c-control-h); padding: 0 var(--e4c-control-pad-x-sm);
 	font-size: var(--e4c-control-fs); font-weight: 700; line-height: 1.2;
 	border-radius: var(--wp--custom--radius-pill);
 	color: var(--e4c-ink); transition: background var(--e4c-ease), color var(--e4c-ease);
@@ -174,21 +181,128 @@ img, svg, video { max-width: 100%; height: auto; }
 /* The nav links and both actions cannot share one row below this width, so the
    links drop to their own centred row instead of the buttons breaking off.
 
-   980px is measured, not estimated. At a 1062px viewport the row occupies
-   195px of logo, 385px of nav, 250px of buttons, 48px of column gaps and two
-   42px gutters: 962px. 980px leaves a small margin over that.
+   920px, derived rather than guessed, and the derivation is the point.
 
-   The two previous values here were both wrong in the same way, and it is worth
-   recording why. 1120px was calibrated against the older, larger controls and
-   never revisited. 1080px replaced it on 2026-08-14 using character-count
-   estimates, which put the nav at 436px against a real 385px, so the header
-   still broke onto two rows across a 112px band where it fitted perfectly well.
-   Guessing at rendered text width does not work; this number came off a
-   screenshot. */
-@media (max-width: 980px) {
+   THE GUTTER IS FLUID. --wp--custom--gutter is clamp(20px, 4vw, 48px), so it
+   shrinks as the viewport does and cannot be treated as a constant. The 980px
+   this replaces was measured at a 1062px viewport, where 4vw is 42px, and then
+   applied as though 42px still held at the breakpoint. It does not: at 968px
+   the gutters are 38.7px each, so the row had about 13px more room than the
+   number assumed and the header broke roughly 26px early. Reported at exactly
+   968px on 2026-08-16.
+
+   Measured content at 1062px: 195px logo, 385px nav, 250px buttons, 48px of
+   column gaps. Only the nav changed since, losing 48px when its links dropped
+   to the small horizontal padding (4 links x 6px x 2 sides), so content is now
+   195 + 337 + 250 + 48 = 830px.
+
+   Solve for the viewport rather than assuming a gutter:
+
+       V >= 830 + 2(0.04V)  ->  0.92V >= 830  ->  V >= 902px
+
+   920px leaves 18px over that, which is the margin for the fact that the three
+   element widths came off a screenshot and carry a pixel or two each.
+
+   The two values before 980px were both wrong in the same way. 1120px was
+   calibrated against the older, larger controls and never revisited. 1080px
+   replaced it on 2026-08-14 using character-count estimates, which put the nav
+   at 436px against a real 385px. Guessing at rendered text width does not work,
+   and neither does holding one term of a fluid expression constant. */
+@media (max-width: 920px) {
+	/* No-JS fallback. Without .e4c-js the toggle stays hidden and this is the
+	   whole behaviour: the links take their own centred row, which is what the
+	   header did before the toggle existed. */
 	.e4c-nav { order: 3; flex: 1 1 100%; }
 	.e4c-brand { flex: 1 1 auto; }
 	.e4c-actions { flex: 0 0 auto; }
+}
+
+/* ---------------------------------------------------------------- menu toggle
+
+   The panel holds the nav AND the two action buttons. Collapsing only the links
+   would leave a 375px row carrying a logo, a toggle and two buttons, which is
+   wider than the row that already needed a compact step to fit without the
+   toggle at all.
+
+   --e4c-nav-collapse is declared so nav.js can read the breakpoint instead of
+   repeating it. A number that lives in two files is a number that will
+   eventually differ between them, and the failure is silent: the panel opens at
+   a width where the links are already on screen. */
+:root { --e4c-nav-collapse: 920px; }
+
+/* .e4c-btn.e4c-navtoggle, not .e4c-navtoggle, and the doubled class is load
+   bearing. The toggle carries e4c-btn so it inherits the control base, and that
+   base sets display:inline-flex further down this file. At equal specificity the
+   later rule wins, so a plain .e4c-navtoggle { display: none } lost and the
+   toggle rendered at every width. It then spent about 85px of a row that had
+   roughly 18px of slack, which pushed the links onto their own row and looked
+   like the hamburger replacing the menu around 925px. Reported 2026-08-16. */
+.e4c-btn.e4c-navtoggle { display: none; gap: var(--e4c-gap-2); }
+.e4c-navtoggle__label { font-weight: 700; }
+
+/* Three bars from one element: the middle is the element's own background, the
+   outer two are its pseudo-elements. Decorative, and aria-hidden in the markup,
+   so it contributes nothing to the accessible name. */
+.e4c-navtoggle__icon {
+	position: relative; display: block;
+	width: 16px; height: 2px;
+	background: currentColor; border-radius: 2px;
+}
+.e4c-navtoggle__icon::before,
+.e4c-navtoggle__icon::after {
+	content: ""; position: absolute; left: 0;
+	width: 100%; height: 2px;
+	background: currentColor; border-radius: 2px;
+	transition: transform var(--e4c-ease), top var(--e4c-ease);
+}
+.e4c-navtoggle__icon::before { top: -5px; }
+.e4c-navtoggle__icon::after  { top: 5px; }
+
+/* Open state is derived from aria-expanded rather than from a second class, so
+   the visual state cannot disagree with what a screen reader is told. */
+.e4c-navtoggle[aria-expanded="true"] .e4c-navtoggle__icon { background: transparent; }
+.e4c-navtoggle[aria-expanded="true"] .e4c-navtoggle__icon::before { top: 0; transform: rotate(45deg); }
+.e4c-navtoggle[aria-expanded="true"] .e4c-navtoggle__icon::after  { top: 0; transform: rotate(-45deg); }
+
+/* No layout of its own above the breakpoint: .e4c-nav and .e4c-actions stay
+   direct flex items of .e4c-header__inner exactly as they were. */
+.e4c-headerpanel { display: contents; }
+
+@media (max-width: 920px) {
+	.e4c-js .e4c-btn.e4c-navtoggle { display: inline-flex; }
+	.e4c-js .e4c-brand { flex: 1 1 auto; }
+
+	.e4c-js .e4c-headerpanel--collapsible {
+		display: grid;
+		gap: var(--e4c-gap-4);
+		/* Absolute against .e4c-header, which is sticky and therefore already a
+		   containing block. Dropping out of flow is what keeps the panel from
+		   pushing the page down as it opens. */
+		position: absolute; top: 100%; left: 0; right: 0;
+		padding: var(--e4c-gap-5) var(--e4c-gutter) var(--e4c-gap-6);
+		background: var(--e4c-page); border-bottom: 1px solid var(--e4c-rule);
+		/* Closed. visibility, not display, so the transition has something to
+		   run on, and so the panel is out of the tab order while closed rather
+		   than merely invisible. */
+		visibility: hidden; opacity: 0;
+		transform: translateY(-4px);
+		transition: opacity var(--e4c-ease), transform var(--e4c-ease), visibility var(--e4c-ease);
+	}
+
+	.e4c-js .e4c-headerpanel--collapsible.is-open {
+		visibility: visible; opacity: 1; transform: none;
+	}
+
+	/* Stacked and full width inside the panel. The row rules above are written
+	   for a horizontal header and read as cramped here. */
+	.e4c-js .e4c-headerpanel--collapsible .e4c-nav { order: 0; flex: initial; }
+	.e4c-js .e4c-headerpanel--collapsible .e4c-nav ul { display: grid; gap: var(--e4c-gap-1); justify-content: stretch; }
+	.e4c-js .e4c-headerpanel--collapsible .e4c-nav a { justify-content: flex-start; padding-inline: var(--e4c-gap-3); }
+
+	.e4c-js .e4c-headerpanel--collapsible .e4c-actions {
+		flex: initial; display: grid; gap: var(--e4c-gap-2);
+		padding-top: var(--e4c-gap-4); border-top: 1px solid var(--e4c-rule);
+	}
 }
 
 /* Phones. The logo and both buttons stay on one row, which needs about 407px
@@ -199,7 +313,7 @@ img, svg, video { max-width: 100%; height: auto; }
    free to shrink further if a narrower screen or a longer label needs it. */
 @media (max-width: 900px) {
 	.e4c-header__inner { column-gap: var(--e4c-gap-3); }
-	/* min-width only. The 1120px block above already sets flex: 1 1 auto and
+	/* min-width only. The 920px block above already sets flex: 1 1 auto and
 	   still applies here, and the brand must keep flex-grow: 1 so it absorbs
 	   the free space and holds the buttons against the right edge. Setting
 	   flex: 0 1 auto here left nothing growing, so justify-content: center
@@ -230,7 +344,8 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-btn,
 .e4c-facet,
 .e4c-pagination .page-numbers,
-.e4c-shell .search-submit {
+.e4c-shell .search-submit,
+.wp-block-button .wp-block-button__link {
 	display: inline-flex; align-items: center; justify-content: center;
 	min-height: var(--e4c-control-h);
 	padding: 0 var(--e4c-control-pad-x);
@@ -259,6 +374,52 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-btn--primary:hover, .e4c-btn--primary:focus-visible { background: var(--e4c-brand-text); color: var(--e4c-on-brand); }
 .e4c-btn--secondary { background: transparent; color: var(--e4c-brand-text); border-color: var(--e4c-brand); }
 .e4c-btn--secondary:hover, .e4c-btn--secondary:focus-visible { background: var(--e4c-brand-tint); color: var(--e4c-brand-text-strong); }
+
+/* Core's button block, styled through its own classes rather than by pasting
+   e4c-btn onto the anchor in a pattern.
+
+   The pattern used to do exactly that, and it made every button block in the
+   patterns invalid: the block computes the anchor's class list from its
+   attributes, so an extra class cannot survive a save/parse round trip and the
+   editor offers "Attempt recovery", which strips it. Styling the generated
+   class instead means an author inserting a plain button block anywhere in an
+   article gets the same control, which is the behaviour that was wanted from
+   the modifier in the first place.
+
+   The two block styles map onto the two modifiers. `fill` is core's default and
+   applies no class at all when it is not explicitly chosen, so primary is
+   matched by exclusion rather than by .is-style-fill, which would miss every
+   button an author inserts without touching the style picker.
+
+   Specificity is .wp-block-button .wp-block-button__link (0,2,0) throughout,
+   one step above the block library's own 0,1,0 rules, so this does not depend
+   on stylesheet order. */
+.wp-block-button .wp-block-button__link { font-weight: 700; }
+
+.wp-block-button:not(.is-style-outline) .wp-block-button__link {
+	background: var(--e4c-brand);
+	color: var(--e4c-on-brand);
+}
+.wp-block-button:not(.is-style-outline) .wp-block-button__link:hover,
+.wp-block-button:not(.is-style-outline) .wp-block-button__link:focus-visible {
+	background: var(--e4c-brand-text);
+	color: var(--e4c-on-brand);
+}
+
+.wp-block-button.is-style-outline .wp-block-button__link {
+	background: transparent;
+	color: var(--e4c-brand-text);
+	/* Core's outline style sets a 2px border and its own padding. Both are
+	   restated rather than inherited so the outline button is the same height
+	   as the filled one beside it. */
+	border: 1px solid var(--e4c-brand);
+	padding: 0 var(--e4c-control-pad-x);
+}
+.wp-block-button.is-style-outline .wp-block-button__link:hover,
+.wp-block-button.is-style-outline .wp-block-button__link:focus-visible {
+	background: var(--e4c-brand-tint);
+	color: var(--e4c-brand-text-strong);
+}
 :where(a, button, input, summary):focus-visible { outline: 2px solid var(--e4c-brand-text); outline-offset: 2px; }
 
 .e4c-tag {
@@ -308,6 +469,12 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-hero__lede { margin:0 0 var(--e4c-gap-6); font-size: var(--wp--preset--font-size--lede); line-height: 1.55; max-width: 52ch; color: var(--e4c-ink-muted); }
 .e4c-hero__actions { display: flex; flex-wrap: wrap; gap: var(--e4c-gap-3); align-items: center; }
 .e4c-hero__figure { margin: 0; }
+/* No rule is needed to hide an unfilled hero image. patterns/home-hero.php
+   always ships an image block so the editor has an upload placeholder, and
+   core's render_block_core_image() returns an empty string for any image block
+   whose img carries no src, on both the fallback and the_content paths.
+   Measured on WP 7.0.4 rather than assumed, after a :has() rule was written
+   here to do a job core was already doing. */
 /* The 16:9 is enforced here and not left to the e4c-hero image size, because
    that size is a hard crop and WordPress never upscales: an image narrower
    than 1600px or shorter than 900px simply never gets the crop generated, and

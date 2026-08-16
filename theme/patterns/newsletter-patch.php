@@ -21,8 +21,9 @@ defined( 'ABSPATH' ) || exit;
 
 	<!-- wp:buttons -->
 	<div class="wp-block-buttons">
+		<?php // Core's classes only. See the note in home-hero.php. ?>
 		<!-- wp:button -->
-		<div class="wp-block-button"><a class="wp-block-button__link e4c-btn e4c-btn--primary wp-element-button" href="/newsletter/"><?php esc_html_e( 'Get the email', 'e4c' ); ?></a></div>
+		<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/newsletter/"><?php esc_html_e( 'Get the email', 'e4c' ); ?></a></div>
 		<!-- /wp:button -->
 	</div>
 	<!-- /wp:buttons -->
