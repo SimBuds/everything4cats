@@ -34,12 +34,24 @@ while ( have_posts() ) :
 
 				<p class="e4c-review__byline">
 					<?php
-					printf(
-						/* translators: 1: author name, 2: publication date. */
-						esc_html__( 'By %1$s, %2$s', 'e4c' ),
-						esc_html( get_the_author() ),
-						esc_html( get_the_date() )
-					);
+					/*
+					 * The author half is dropped rather than left blank when there
+					 * is no name. get_the_author() returns '' for a post whose
+					 * author was deleted, or one created programmatically, and the
+					 * template printed "By , tested 17 August" for it. A byline
+					 * missing its name should lose the word "By" with it.
+					 */
+					if ( get_the_author() ) {
+						printf(
+							/* translators: 1: author name, 2: publication date. */
+							esc_html__( 'By %1$s, %2$s', 'e4c' ),
+							esc_html( get_the_author() ),
+							esc_html( get_the_date() )
+						);
+					} else {
+						/* translators: %s: publication date. */
+						printf( esc_html__( 'Published %s', 'e4c' ), esc_html( get_the_date() ) );
+					}
 
 					/*
 					 * Only shown when the post really was edited after publishing, which

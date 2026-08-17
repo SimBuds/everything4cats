@@ -622,12 +622,16 @@ img, svg, video { max-width: 100%; height: auto; }
 		grid-template-columns: minmax(0, var(--wp--custom--measure-body)) minmax(220px, 300px);
 	}
 
-	/* The rail rises past the intro so the image sits level with the lede
-	   rather than starting below it. Only the rail moves: the prose keeps its
-	   spacing under the intro. Safe because the intro spans the full width but
-	   its lede is capped at 46ch, so there is nothing at the rail's x position
-	   to collide with. */
-	.e4c-review__body > .e4c-cols { margin-top: calc(-1 * var(--wp--preset--spacing--60)); }
+	/* NO negative margin on the rail. There was one, pulling it up by
+	   spacing--60 so a rail image would sit level with the lede, and its own
+	   comment recorded why that was safe: the intro spans the full width, but
+	   its lede is capped at 46ch, so nothing sat at the rail's x position.
+
+	   That stopped being true when the verdict panel landed between the intro
+	   and the body. The panel is full width by design, the rail rose straight
+	   into it, and "What works" printed on top of the verdict. An assumption
+	   about what is above an element cannot be enforced by the element, which
+	   is why this is deleted rather than tuned to a smaller offset. */
 }
 /* A block that follows the article body and shares its measure, so it lines up
    with the prose above rather than running the full width of the shell. */
@@ -671,6 +675,21 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-article h2 { margin-top: 1.6em; margin-bottom: 0; }
 .e4c-article h3 { margin-top: 1.4em; margin-bottom: 0; }
 .e4c-article ul, .e4c-article ol { line-height: 1.6; }
+/* Blockquote. The theme had no rule for one at all until 2026-08-17, so a pull
+   quote rendered as a paragraph with the browser's default indent and read as
+   an accident. Found by putting one on a page for the first time.
+
+   A rule and a colour rather than large italics: this is a site whose display
+   face is already loud, and a quote set in it at size competes with the
+   headings around it instead of sitting inside the argument. */
+.e4c-article blockquote {
+	margin: 1.6em 0; padding: var(--e4c-gap-2) 0 var(--e4c-gap-2) var(--wp--preset--spacing--30);
+	border-left: 3px solid var(--e4c-brand);
+	color: var(--e4c-ink-muted);
+}
+.e4c-article blockquote p { margin: 0; font-size: var(--wp--preset--font-size--lede); line-height: 1.5; }
+.e4c-article blockquote cite { display: block; margin-top: var(--e4c-gap-2); font-size: var(--wp--preset--font-size--small); font-style: normal; }
+
 .e4c-article .art-disclose {
 	margin: 0 0 1.4em; padding: var(--e4c-gap-3) var(--e4c-gap-4);
 	background: var(--e4c-second-tint); color: var(--e4c-second-deep);
@@ -801,10 +820,16 @@ img, svg, video { max-width: 100%; height: auto; }
    above them is capped at 62ch precisely because prose reads badly wider.
    Photographs do not have that problem. */
 .e4c-shots { margin-top: var(--wp--preset--spacing--60); }
+/* auto-FIT here, where the card grids use auto-fill, and the difference is the
+   whole point. auto-fill keeps empty tracks, which is right for a listing: one
+   card should stay card-sized rather than stretching across the page. A gallery
+   is the opposite. Two photographs of a product should use the width they are
+   given, not sit at a third of it with a hole beside them, which is what
+   auto-fill produced. */
 .e4c-shots__grid {
 	list-style: none; margin: 0; padding: 0;
 	display: grid; gap: var(--wp--preset--spacing--40);
-	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+	grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 .e4c-shot figure { margin: 0; display: grid; gap: var(--e4c-gap-2); }
 .e4c-shot img {
@@ -834,7 +859,16 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-pick__title a { text-decoration: none; }
 .e4c-pick__title a:hover { text-decoration: underline; }
 .e4c-pick__why { margin: 0; color: var(--e4c-ink-muted); max-width: 56ch; }
-.e4c-pick__media img { border-radius: var(--wp--custom--radius-media); display: block; }
+/* Sized here rather than left at the file's intrinsic width. e4c-thumb is a
+   320x320 crop, and an <img> with no width renders at exactly that, which made
+   the pick row 320px tall to accommodate a picture of a litter box while the
+   award, title and one-line reason beside it occupied about 90px. The result
+   was a row that was mostly empty surface. 160px is enough to identify a
+   product and short enough that the text sets the row height. */
+.e4c-pick__media img {
+	display: block; border-radius: var(--wp--custom--radius-media);
+	width: 160px; height: 160px; object-fit: cover;
+}
 
 /* Below this the rank, body and thumbnail cannot share a row without the
    thumbnail squeezing the prose to a column of single words.

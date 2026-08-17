@@ -40,12 +40,18 @@ while ( have_posts() ) :
 
 				<p class="e4c-review__byline">
 					<?php
-					printf(
-						/* translators: 1: author name, 2: date the roundup was last updated. */
-						esc_html__( 'By %1$s, updated %2$s', 'e4c' ),
-						esc_html( get_the_author() ),
-						esc_html( get_the_modified_date() )
-					);
+					// See the note in single.php: no name means no "By".
+					if ( get_the_author() ) {
+						printf(
+							/* translators: 1: author name, 2: date the roundup was last updated. */
+							esc_html__( 'By %1$s, updated %2$s', 'e4c' ),
+							esc_html( get_the_author() ),
+							esc_html( get_the_modified_date() )
+						);
+					} else {
+						/* translators: %s: date the roundup was last updated. */
+						printf( esc_html__( 'Updated %s', 'e4c' ), esc_html( get_the_modified_date() ) );
+					}
 					?>
 				</p>
 			</div>

@@ -21,7 +21,7 @@ if ( $e4c_related->have_posts() ) :
 			<a href="<?php echo esc_url( get_post_type_archive_link( 'review' ) ); ?>"><?php esc_html_e( 'All reviews', 'e4c' ); ?></a>
 		</div>
 
-		<div class="e4c-grid">
+		<div class="e4c-grid e4c-grid--feature">
 			<?php
 			while ( $e4c_related->have_posts() ) :
 				$e4c_related->the_post();
