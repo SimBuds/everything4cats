@@ -31,7 +31,7 @@ get_header();
 while ( have_posts() ) :
 	the_post();
 	?>
-	<article <?php post_class( 'e4c-shell e4c-review' ); ?>>
+	<article <?php post_class( 'e4c-shell e4c-shell--narrow e4c-review' ); ?>>
 
 		<div class="e4c-review__head">
 			<div>
@@ -45,16 +45,27 @@ while ( have_posts() ) :
 
 		<?php
 		/*
-		 * The provider's embed block goes here, in the page body. If the page is
-		 * empty the patch pattern renders instead, so the template is never a
-		 * blank promise of a signup form that does not exist.
+		 * The provider's embed block goes here, in the page body.
+		 *
+		 * The empty state used to render the newsletter-patch pattern, and that
+		 * was circular: the patch is the module that sends people TO this page,
+		 * so its heading repeated directly under the title and its "Get the
+		 * email" button linked to /newsletter/, the page already being read. A
+		 * call to action pointing at itself is worse than no call to action.
+		 *
+		 * What replaces it says the true thing instead. The pledge panel below
+		 * still explains what subscribing means, so the page is never bare.
 		 */
 		if ( get_the_content() ) :
 			?>
 			<div class="e4c-article"><?php the_content(); ?></div>
 			<?php
 		else :
-			echo do_blocks( '<!-- wp:pattern {"slug":"e4c/newsletter-patch"} /-->' );
+			?>
+			<div class="e4c-article">
+				<p><?php esc_html_e( 'The sign-up form is not connected yet. It will appear here as soon as the list is live.', 'e4c' ); ?></p>
+			</div>
+			<?php
 		endif;
 		?>
 

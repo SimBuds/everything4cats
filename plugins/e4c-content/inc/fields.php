@@ -158,6 +158,54 @@ function e4c_content_register_fields(): void {
 					),
 				),
 			),
+			array(
+				'key'       => 'field_e4c_tab_gallery',
+				'label'     => __( 'Test photos', 'e4c-content' ),
+				'type'      => 'tab',
+				'placement' => 'top',
+			),
+			/*
+			 * The evidence for the claim the whole site rests on.
+			 *
+			 * page-how-we-test.php promises every product spent real time in a
+			 * real house before anything was written about it, and until now a
+			 * review could carry exactly one image: the hero, which is usually
+			 * the product looking its best. These are the weeks-three photos,
+			 * and they are the difference between asserting the claim and
+			 * showing it.
+			 *
+			 * Stores the attachment ID rather than the array. e4c_field() falls
+			 * back to raw post meta when the fields plugin is inactive, and an
+			 * ID survives that path as a usable value while an array does not.
+			 */
+			array(
+				'key'          => 'field_e4c_gallery',
+				'label'        => __( 'Test photos', 'e4c-content' ),
+				'name'         => 'e4c_gallery',
+				'type'         => 'repeater',
+				'layout'       => 'block',
+				'button_label' => __( 'Add photo', 'e4c-content' ),
+				'instructions' => __( 'Photographs of the product in use. Upload at 800px wide or larger.', 'e4c-content' ),
+				'sub_fields'   => array(
+					array(
+						'key'           => 'field_e4c_gallery_image',
+						'label'         => __( 'Photo', 'e4c-content' ),
+						'name'          => 'image',
+						'type'          => 'image',
+						'return_format' => 'id',
+						'preview_size'  => 'e4c-card',
+						'library'       => 'all',
+						'mime_types'    => 'jpg,jpeg,png,webp,avif',
+					),
+					array(
+						'key'          => 'field_e4c_gallery_caption',
+						'label'        => __( 'Caption', 'e4c-content' ),
+						'name'         => 'caption',
+						'type'         => 'text',
+						'instructions' => __( 'What this photo shows. Doubles as the alt text.', 'e4c-content' ),
+					),
+				),
+			),
 		),
 	) );
 

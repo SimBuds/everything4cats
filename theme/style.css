@@ -97,11 +97,17 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-shell { max-width: var(--e4c-page-max); margin: 0 auto; padding-inline: var(--e4c-gutter); }
 /* For pages that are one column of prose plus a rail. The full 1440px shell
    leaves a text page sitting against the left edge with several hundred pixels
-   of nothing to its right. 1040px is the body measure plus the rail plus both
-   gutters, so the article fills its shell and .e4c-shell's auto margins centre
-   the whole thing. Narrowing the shell rather than centring the inner blocks is
-   what keeps the head, the panels and the body on one shared left edge. */
-.e4c-shell--narrow { max-width: 1040px; }
+   of nothing to its right. This is the body measure plus the rail plus the
+   column gap plus both gutters, so the article fills its shell and
+   .e4c-shell's auto margins centre the whole thing. Narrowing the shell rather
+   than centring the inner blocks is what keeps the head, the panels and the
+   body on one shared left edge.
+
+   1140px, raised from 1040px on 2026-08-17 with the rail. The two numbers are
+   one measurement and have to move together: leaving the shell at 1040 while
+   the rail grew to 400 would have taken the extra 100px out of the prose
+   column instead of off the empty margin. */
+.e4c-shell--narrow { max-width: 1140px; }
 
 /* The article grid, shared by every template that wants prose on the left and
    a rail on the right. Each piece is placed explicitly rather than nested, so
@@ -115,7 +121,13 @@ img, svg, video { max-width: 100%; height: auto; }
 @media (min-width: 960px) {
 	.e4c-artgrid {
 		display: grid;
-		grid-template-columns: minmax(0, var(--wp--custom--measure-body)) minmax(220px, 300px);
+		/* The rail is wider here than in single-review's .e4c-review__body, and
+		   deliberately so. There the rail holds pros and cons, which are short
+		   lines beside a long article. Here it leads with a photograph, and at
+		   300px that photograph was the smallest thing on the page. 400px gives
+		   it enough width to read as an image rather than a thumbnail, and the
+		   panels under it gain a more comfortable line length as a side effect. */
+		grid-template-columns: minmax(0, var(--wp--custom--measure-body)) minmax(260px, 400px);
 		column-gap: var(--wp--preset--spacing--50);
 		align-items: start;
 	}
@@ -446,6 +458,20 @@ img, svg, video { max-width: 100%; height: auto; }
    the full-size original. On the Reviews archive that rendered one card image
    at the full width and height of the page. */
 .e4c-card__media img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+/* cover here, not the contain the hero uses. A hero is one photograph and
+   showing all of it matters. A card is one cell of a grid, where a shared shape
+   is what makes the grid read as a grid, and letterboxing every odd-shaped
+   upload would put bars of background across the listing. */
+
+/* The empty state. Same box, same radius, no content: it holds the row's
+   alignment and says nothing. A tint rather than an icon, because a card that
+   shouts about its missing image draws the eye to the one post that is
+   incomplete. */
+.e4c-card__media--empty {
+	display: block; aspect-ratio: 4 / 3;
+	background:
+		linear-gradient(135deg, var(--e4c-surface) 0%, var(--e4c-brand-tint) 100%);
+}
 .e4c-card__title { margin: 0; font-size: var(--wp--preset--font-size--title); }
 .e4c-card__title a { color: inherit; text-decoration: none; }
 .e4c-card__title a:hover { color: var(--e4c-brand-text); }
@@ -454,7 +480,28 @@ img, svg, video { max-width: 100%; height: auto; }
 /* auto-fill, not auto-fit. auto-fit collapses the empty tracks, so a single
    review stretched one card across the whole 1344px shell. auto-fill keeps the
    tracks, so one card is card-sized and the grid fills left to right. */
+/* auto-fill, not auto-fit, and the distinction matters on the thin listings.
+   auto-fit collapses empty tracks, so a related-reviews strip holding one card
+   would stretch that card across the entire width. auto-fill keeps the tracks
+   and the single card stays card-sized. */
 .e4c-grid { display: grid; gap: var(--wp--preset--spacing--40); grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+
+/* The larger step, for listings where the photograph IS the content: the review
+   and roundup archives, the category archives, and the home feeds.
+
+   This was applied to .e4c-grid itself on 2026-08-17 and that was wrong. Every
+   listing in the theme shares that class, including search, which mixes reviews
+   with pages. Pages have no featured image, so a search for anything returned a
+   screen of 448px placeholder blocks with a line of text under each. The
+   request was bigger cards on archives, and archives is where it belongs. */
+.e4c-grid--feature { grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); }
+
+/* Below roughly two full columns the 380px minimum would overflow the shell,
+   so the feature grid drops to one column of full-width media. That is the
+   right outcome on a phone: one large photograph beats two cramped ones. */
+@media (max-width: 860px) {
+	.e4c-grid--feature { grid-template-columns: 1fr; }
+}
 
 /* No bottom padding. .e4c-footer already carries margin-top: spacing--70, and
    both together put about 144px between the last line of a page and the
@@ -487,19 +534,25 @@ img, svg, video { max-width: 100%; height: auto; }
    The box stays fixed either way, so the worst an undersized upload can do is
    look soft rather than break the layout.
 
-   contain, not cover, chosen 2026-08-16. cover fills the box and crops whatever
-   does not fit, which silently beheads a portrait photo: a 147x220 upload was
-   scaled up 3.3x and then had its top and bottom cut away, so the hero showed a
-   blurry fragment of a cat. contain fits the whole image inside the box and
-   fills the remainder with the figure's own background, so nothing is ever cut
-   off and a mis-shaped upload reads as a framed photo rather than a broken one.
+   THE FIT WAS DECIDED TWICE, AND BOTH DECISIONS ARE WORTH KEEPING.
 
-   The cost is honest and worth stating: a portrait image in a 16:9 box leaves
-   wide bars either side and occupies a fraction of the space. That is a
-   prompt to upload a landscape photo, which is the actual fix, and it is a far
-   better failure than cropping the subject out of frame. */
+   cover was the original, and it silently beheads a portrait photo: a 147x220
+   upload was scaled up 3.3x and then had its top and bottom cut away, so the
+   hero showed a blurry fragment of a cat. contain replaced it on 2026-08-16 to
+   stop that, and it did: nothing is ever cropped.
+
+   contain has its own cost, and seeing it on the real page settled the
+   question. A portrait photo in a 16:9 box renders as a small stamp with wide
+   bars either side, occupying a fraction of the space it was given. On the
+   How we test rail that was severe enough to undo widening the rail from 300px
+   to 400px. Back to cover on 2026-08-17, on Casey's call after looking at both.
+
+   So the trade is explicit: a mis-shaped upload gets cropped rather than
+   shrunk, and the real fix for both failure modes is the same one, which is to
+   upload a 1600x900 landscape photo. inc/admin-image-check.php is what nags for
+   that, and it is why that notice exists. */
 .e4c-hero__figure img {
-	display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain;
+	display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
 	border-radius: var(--wp--custom--radius-card); background: var(--e4c-surface);
 }
 
@@ -540,7 +593,11 @@ img, svg, video { max-width: 100%; height: auto; }
 
 /* Taller than the 16:9 used for a full-width hero. At rail width 16:9 is a
    letterbox strip; 3:2 gives the image enough height to read as a photograph. */
-.e4c-cols .e4c-hero__figure img { aspect-ratio: 3 / 2; }
+/* No rail override. It carried object-fit: cover for a few hours on 2026-08-17,
+   while the hero was still contain. The hero is cover again, so the rail
+   inherits it and a repeat here would be a rule that looks load-bearing and
+   changes nothing. The rail keeps the shared 16:9 for the same reason: the
+   source is the e4c-hero crop, so any other ratio would crop it twice. */
 .e4c-verdict__price { font-size: var(--wp--preset--font-size--title-lg); font-weight: 700; }
 /* Held to the same measure as the article body below it. Without the cap the
    pros and cons ran the full width of the shell while the prose underneath was
@@ -699,8 +756,25 @@ img, svg, video { max-width: 100%; height: auto; }
 /* Facets. Used three ways: subcategory links on a term archive, the post-type
    filter on search, and the category trail under a guide. One component with
    an optional count rather than three near-identical ones. */
-.e4c-facets { display: flex; flex-wrap: wrap; gap: var(--e4c-gap-2); align-items: center; }
-.e4c-facets--footer { margin-top: var(--wp--preset--spacing--50); padding-top: var(--wp--preset--spacing--30); border-top: 1px solid var(--e4c-rule); }
+/* The filter row is a control strip, not part of the heading, and it needs to
+   sit visibly apart from both. It had no bottom margin at all, so the pills sat
+   directly on top of the first row of cards and read as a caption for the first
+   one. The rule underneath separates it from the results the way the footer
+   variant already separates itself from what is above it. */
+.e4c-facets {
+	display: flex; flex-wrap: wrap; gap: var(--e4c-gap-2); align-items: center;
+	margin-top: var(--wp--preset--spacing--30);
+	margin-bottom: var(--wp--preset--spacing--40);
+	padding-bottom: var(--wp--preset--spacing--30);
+	border-bottom: 1px solid var(--e4c-rule);
+}
+/* The footer variant separates itself from what is ABOVE it, so it undoes the
+   bottom rule the filter strip now carries. */
+.e4c-facets--footer {
+	margin-top: var(--wp--preset--spacing--50); margin-bottom: 0;
+	padding-top: var(--wp--preset--spacing--30); padding-bottom: 0;
+	border-top: 1px solid var(--e4c-rule); border-bottom: 0;
+}
 .e4c-facet {
 	gap: var(--e4c-gap-2);
 	background: var(--e4c-surface); color: var(--e4c-ink);
@@ -722,6 +796,27 @@ img, svg, video { max-width: 100%; height: auto; }
 /* Roundup picks. An ordered list because the ranking is the content, so the
    numbering survives CSS being unavailable. The visible rank marker is
    aria-hidden and the ol supplies the real semantics. */
+/* Test photos on a review. The widest thing on the page, deliberately: these
+   are the evidence for the claim page-how-we-test.php makes, and the article
+   above them is capped at 62ch precisely because prose reads badly wider.
+   Photographs do not have that problem. */
+.e4c-shots { margin-top: var(--wp--preset--spacing--60); }
+.e4c-shots__grid {
+	list-style: none; margin: 0; padding: 0;
+	display: grid; gap: var(--wp--preset--spacing--40);
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+.e4c-shot figure { margin: 0; display: grid; gap: var(--e4c-gap-2); }
+.e4c-shot img {
+	display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+	border-radius: var(--wp--custom--radius-media); background: var(--e4c-surface);
+}
+.e4c-shot figcaption { font-size: var(--wp--preset--font-size--small); color: var(--e4c-ink-muted); }
+
+@media (max-width: 860px) {
+	.e4c-shots__grid { grid-template-columns: 1fr; }
+}
+
 .e4c-picks { margin-top: var(--wp--preset--spacing--50); }
 .e4c-picks__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--wp--preset--spacing--30); counter-reset: e4c-pick; }
 .e4c-pick {
@@ -742,10 +837,19 @@ img, svg, video { max-width: 100%; height: auto; }
 .e4c-pick__media img { border-radius: var(--wp--custom--radius-media); display: block; }
 
 /* Below this the rank, body and thumbnail cannot share a row without the
-   thumbnail squeezing the prose to a column of single words. */
+   thumbnail squeezing the prose to a column of single words.
+
+   The thumbnail used to be display:none here, which solved the squeeze by
+   deleting the picture. On a phone that left a roundup, the most visual page
+   type on the site, as a numbered list of text. It now moves instead: the media
+   spans both columns above the rank and body, full width, which is more image
+   than the desktop layout gives it rather than less. */
 @media (max-width: 640px) {
 	.e4c-pick { grid-template-columns: auto 1fr; }
-	.e4c-pick__media { display: none; }
+	.e4c-pick__media { grid-row: 1; grid-column: 1 / -1; }
+	.e4c-pick__media img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; }
+	.e4c-pick__rank { grid-row: 2; }
+	.e4c-pick__body { grid-row: 2; }
 }
 
 /* The pledge panels on the methodology and newsletter pages. Same surface as
@@ -763,8 +867,16 @@ img, svg, video { max-width: 100%; height: auto; }
 /* Core's search form, which get_search_form() emits on the 404 and search
    templates. Styled rather than replaced with a custom form: core's markup is
    already labelled and accessible. */
-.e4c-shell .search-form { display: flex; gap: var(--e4c-gap-2); flex-wrap: wrap; align-items: center; }
-.e4c-shell .search-form label { flex: 1 1 220px; }
+/* nowrap, and the label allowed to shrink below its content.
+   The form sits opposite the page title in .e4c-section__head, which leaves it
+   roughly 235px. With flex-wrap: wrap and the label at flex-basis 220px, the
+   label plus the 70px button plus the gap needed about 298px, so the button
+   wrapped under the field on every search. The pair is one control and has to
+   stay on one line: min-width: 0 is what actually lets the input shrink, since
+   a flex item will not go below its content size without it. */
+.e4c-shell .search-form { display: flex; gap: var(--e4c-gap-2); flex-wrap: nowrap; align-items: center; }
+.e4c-shell .search-form label { flex: 1 1 auto; min-width: 0; }
+.e4c-shell .search-submit { flex: 0 0 auto; }
 /* The field takes the control height so it and the submit button match. Both
    keep the rounded-rectangle radius rather than the pill: a pill field reads as
    a button, and the pair has to look like one unit. */

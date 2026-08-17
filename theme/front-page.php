@@ -74,7 +74,7 @@ get_header();
 				<a href="<?php echo esc_url( get_post_type_archive_link( 'review' ) ); ?>"><?php esc_html_e( 'All reviews', 'e4c' ); ?></a>
 			</div>
 
-			<div class="e4c-grid">
+			<div class="e4c-grid e4c-grid--feature">
 				<?php
 				while ( $e4c_reviews->have_posts() ) :
 					$e4c_reviews->the_post();
@@ -102,10 +102,80 @@ get_header();
 				<a href="<?php echo esc_url( get_post_type_archive_link( 'roundup' ) ); ?>"><?php esc_html_e( 'All our picks', 'e4c' ); ?></a>
 			</div>
 
-			<div class="e4c-grid">
+			<div class="e4c-grid e4c-grid--feature">
 				<?php
 				while ( $e4c_roundups->have_posts() ) :
 					$e4c_roundups->the_post();
+					get_template_part( 'template-parts/card', 'post' );
+				endwhile;
+				?>
+			</div>
+		</section>
+		<?php
+	endif;
+	wp_reset_postdata();
+	?>
+
+	<?php
+	/*
+	 * Browse by category. Not a feed: the five terms of cat-category are the
+	 * site's actual shape, and a reader who arrives without a product in mind
+	 * needs a way in that is not a chronological list.
+	 *
+	 * hide_empty is true, so a term with nothing published does not advertise
+	 * an empty archive. That means this section can render with two terms early
+	 * on and five later, which is correct rather than something to pad out.
+	 */
+	$e4c_terms = get_terms( array(
+		'taxonomy'   => 'cat-category',
+		'hide_empty' => true,
+	) );
+
+	if ( $e4c_terms && ! is_wp_error( $e4c_terms ) ) :
+		?>
+		<section class="e4c-section" aria-labelledby="e4c-browse">
+			<div class="e4c-section__head">
+				<h2 id="e4c-browse"><?php esc_html_e( 'Browse by category', 'e4c' ); ?></h2>
+			</div>
+
+			<nav class="e4c-facets" aria-label="<?php esc_attr_e( 'Categories', 'e4c' ); ?>">
+				<?php foreach ( $e4c_terms as $e4c_term ) : ?>
+					<a class="e4c-facet" href="<?php echo esc_url( (string) get_term_link( $e4c_term ) ); ?>">
+						<?php echo esc_html( $e4c_term->name ); ?>
+						<span class="e4c-facet__count"><?php echo esc_html( (string) $e4c_term->count ); ?></span>
+					</a>
+				<?php endforeach; ?>
+			</nav>
+		</section>
+		<?php
+	endif;
+
+	/*
+	 * Articles. The reviews and roundups above are the product coverage; this is
+	 * everything else the site writes, and without it a published post has no
+	 * route from the front page at all.
+	 *
+	 * Renders nothing while nothing is published, like both feeds above, so the
+	 * homepage never shows an empty heading.
+	 */
+	$e4c_articles = new WP_Query( array(
+		'post_type'           => 'post',
+		'posts_per_page'      => 3,
+		'ignore_sticky_posts' => true,
+		'no_found_rows'       => true,
+	) );
+
+	if ( $e4c_articles->have_posts() ) :
+		?>
+		<section class="e4c-section" aria-labelledby="e4c-articles">
+			<div class="e4c-section__head">
+				<h2 id="e4c-articles"><?php esc_html_e( 'Reading', 'e4c' ); ?></h2>
+			</div>
+
+			<div class="e4c-grid e4c-grid--feature">
+				<?php
+				while ( $e4c_articles->have_posts() ) :
+					$e4c_articles->the_post();
 					get_template_part( 'template-parts/card', 'post' );
 				endwhile;
 				?>

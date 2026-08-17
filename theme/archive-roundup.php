@@ -28,7 +28,7 @@ get_header();
 	</div>
 
 	<?php if ( have_posts() ) : ?>
-		<div class="e4c-grid">
+		<div class="e4c-grid e4c-grid--feature">
 			<?php
 			while ( have_posts() ) :
 				the_post();

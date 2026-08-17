@@ -90,6 +90,27 @@ while ( have_posts() ) :
 						$e4c_award = $e4c_row['award'] ?? '';
 						$e4c_why   = $e4c_row['why'] ?? '';
 
+						/*
+						 * An unpublished target counts as no target.
+						 *
+						 * The row used to print get_the_title() for any linked
+						 * post and only withhold the LINK when that post was
+						 * not published. That put the title of a draft review
+						 * on a public page: a headline for something nobody can
+						 * open, and a disclosure of unpublished editorial work
+						 * to anyone who visits. Zeroing the reference makes the
+						 * rest of the loop treat the row as unattached, so it
+						 * falls back to the award or is skipped by the guard
+						 * below.
+						 *
+						 * Tests for 'publish' rather than for 'draft', because
+						 * the question is whether a reader can open it, and
+						 * pending, private, future and trash all fail that.
+						 */
+						if ( $e4c_ref && 'publish' !== get_post_status( $e4c_ref ) ) {
+							$e4c_ref = 0;
+						}
+
 						// A pick with no linked review and no award is an empty repeater
 						// row left behind in the editor, not content.
 						if ( ! $e4c_ref && ! $e4c_award ) {
@@ -107,12 +128,16 @@ while ( have_posts() ) :
 								<?php endif; ?>
 
 								<h3 class="e4c-pick__title">
-									<?php if ( $e4c_ref && 'publish' === get_post_status( $e4c_ref ) ) : ?>
+									<?php
+									// $e4c_ref is guaranteed published or zero by the
+									// normalisation above, so there is no third case
+									// here any more: a reference either resolves to a
+									// readable review or it is not a reference.
+									?>
+									<?php if ( $e4c_ref ) : ?>
 										<a href="<?php echo esc_url( (string) get_permalink( $e4c_ref ) ); ?>">
 											<?php echo esc_html( get_the_title( $e4c_ref ) ); ?>
 										</a>
-									<?php elseif ( $e4c_ref ) : ?>
-										<?php echo esc_html( get_the_title( $e4c_ref ) ); ?>
 									<?php else : ?>
 										<?php echo esc_html( $e4c_award ); ?>
 									<?php endif; ?>

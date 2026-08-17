@@ -162,3 +162,61 @@ function e4c_method_statement(): string {
 	/* translators: the standing bar above the site header. */
 	return __( 'Everything here lived in a real house with real cats. We buy what we test, and we tell you when not to buy.', 'e4c' );
 }
+
+/**
+ * The public name for a post type, and the verb that goes with its date.
+ *
+ * One map, because the site had three names for the same thing. A regular post
+ * showed as "Guides" in the search filter, "Post" on its card, and sat under a
+ * "Reading" heading on the home page. Readers do not know that WordPress calls
+ * it a post, and "Post" is the one name of the three that means nothing to
+ * them.
+ *
+ * The date verb belongs here for the same reason. Every card printed
+ * "Tested <date>" regardless of type, so guides and roundups claimed a test
+ * that never happened, on a site whose entire proposition is that the testing
+ * is real. That is the one claim this theme cannot be loose about.
+ *
+ * @param string $post_type Post type name.
+ * @return array{label:string,plural:string,verb:string}
+ */
+function e4c_type_meta( string $post_type ): array {
+	$map = array(
+		'review'  => array(
+			'label'  => __( 'Review', 'e4c' ),
+			'plural' => __( 'Reviews', 'e4c' ),
+			/* translators: %s: date the product finished testing. */
+			'verb'   => __( 'Tested %s', 'e4c' ),
+		),
+		'roundup' => array(
+			'label'  => __( 'Roundup', 'e4c' ),
+			'plural' => __( 'Roundups', 'e4c' ),
+			/* translators: %s: date the roundup was last revised. A roundup is
+			   compiled from reviews rather than tested in its own right, and it
+			   is revised as picks change, so the date readers need is the last
+			   update rather than first publication. */
+			'verb'   => __( 'Updated %s', 'e4c' ),
+		),
+		'post'    => array(
+			'label'  => __( 'Guide', 'e4c' ),
+			'plural' => __( 'Guides', 'e4c' ),
+			/* translators: %s: publication date. */
+			'verb'   => __( 'Published %s', 'e4c' ),
+		),
+	);
+
+	if ( isset( $map[ $post_type ] ) ) {
+		return $map[ $post_type ];
+	}
+
+	// Anything not named above falls back to what WordPress calls it, with a
+	// neutral verb. Pages reach this, and so would a post type added later.
+	$obj = get_post_type_object( $post_type );
+
+	return array(
+		'label'  => $obj ? $obj->labels->singular_name : '',
+		'plural' => $obj ? $obj->labels->name : '',
+		/* translators: %s: publication date. */
+		'verb'   => __( 'Published %s', 'e4c' ),
+	);
+}

@@ -1082,6 +1082,28 @@ Keep responses tight. State results and decisions directly. Do not narrate
 internal deliberation. The phase report, the DoD checklist, and the handoff
 line are the contract. Everything else is optional.
 
+### No standing-workflow reminders
+
+Do not close a response with the workflow Casey already runs. Specifically, no
+reminders to bring staging up or down, to refresh staging to see a change, to
+commit, to push, or to pull on the server to deploy. Casey runs this loop daily.
+Restating it turns every answer into a footer of things he already knew, and it
+buries the part he asked for.
+
+State what changed and what was verified, then stop.
+
+The exception is when the environment is itself the finding rather than a
+sign-off. A container in a state that would silently destroy work is worth a
+sentence: `up.sh` starts pristine and discards whatever is in the running
+container, while `docker start` on a stopped one keeps it. So is a fact that is
+only true in one environment, such as a stale stylesheet being served. The test
+is whether the reader learns something they could not have predicted. A generic
+"remember to deploy" fails that test. "The container is dead, and `up.sh` would
+wipe what you entered" passes it.
+
+Instructed 2026-08-17: "you dont need to give me reminders on staging or pushing
+to github".
+
 ---
 
 ## When stuck

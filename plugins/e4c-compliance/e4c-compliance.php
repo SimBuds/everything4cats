@@ -280,7 +280,33 @@ add_filter( 'the_content', 'e4c_compliance_affiliate_disclosure', 21 );
  * @return void
  */
 function e4c_compliance_structured_data() {
-	if ( ! is_singular( array( 'post', 'page' ) ) ) {
+	/*
+	 * Reviews and roundups are on this list, and their absence was a real bug
+	 * rather than a judgement call.
+	 *
+	 * This read is_singular( array( 'post', 'page' ) ) until 2026-08-17, which
+	 * was correct when it was written and stopped being correct the moment
+	 * plugins/e4c-content registered the review and roundup post types. The
+	 * effect was that every page carrying the site's actual commercial content
+	 * shipped with no structured data at all, while the Privacy Policy had it.
+	 *
+	 * It stayed invisible because it fails silently in both directions. Phase 16
+	 * turned Rank Math's Schema module OFF specifically so it would not emit a
+	 * second Article block alongside this one, so once this one stopped covering
+	 * reviews there was nothing left to notice the gap. And the check that would
+	 * have caught it, "exactly one Article block per page", was deferred out of
+	 * Phase 16 because nothing was published yet to run it against. Found the
+	 * first time it ran with content on the page.
+	 *
+	 * Filterable rather than hardcoded, matching how the affiliate domain list
+	 * works, so a future post type is one filter rather than an edit here.
+	 */
+	$e4c_types = (array) apply_filters(
+		'e4c_compliance_schema_post_types',
+		array( 'post', 'page', 'review', 'roundup' )
+	);
+
+	if ( ! is_singular( $e4c_types ) ) {
 		return;
 	}
 

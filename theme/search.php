@@ -42,11 +42,14 @@ $e4c_count = static function ( string $post_type, string $term ): int {
 	return (int) $found->found_posts;
 };
 
+// Plural names come from the same map the cards use, so a filter pill and the
+// tag on the card it filters to can never disagree about what a thing is
+// called. They did: this list said Guides while every card said Post.
 $e4c_facets = array(
 	''        => __( 'Everything', 'e4c' ),
-	'review'  => __( 'Reviews', 'e4c' ),
-	'roundup' => __( 'Roundups', 'e4c' ),
-	'post'    => __( 'Guides', 'e4c' ),
+	'review'  => e4c_type_meta( 'review' )['plural'],
+	'roundup' => e4c_type_meta( 'roundup' )['plural'],
+	'post'    => e4c_type_meta( 'post' )['plural'],
 );
 ?>
 <div class="e4c-shell e4c-section">

@@ -134,6 +134,77 @@ while ( have_posts() ) :
 			<?php endif; ?>
 		</div>
 
+		<?php
+		/*
+		 * Test photos. Deliberately placed after the article and before the
+		 * specs: the prose makes the claims, these show them, and the spec
+		 * table is reference material nobody reads in order.
+		 *
+		 * Full shell width rather than the body measure, because the point of
+		 * these is that they are photographs and a 62ch column would render
+		 * them as thumbnails. This is the widest thing on a review page.
+		 *
+		 * The caption doubles as alt text. Two fields would mean two chances to
+		 * leave one empty, and a caption that describes the photo is exactly
+		 * what alt text needs to say. Where a caption is missing the image is
+		 * still rendered with alt="" rather than skipped, which marks it
+		 * decorative rather than lying about its content.
+		 */
+		$e4c_gallery = e4c_field( 'e4c_gallery' );
+
+		if ( $e4c_gallery ) :
+			$e4c_shots = array();
+
+			foreach ( (array) $e4c_gallery as $e4c_row ) {
+				$e4c_img = is_array( $e4c_row ) ? ( $e4c_row['image'] ?? 0 ) : $e4c_row;
+
+				// An image field set to return an array, or a row left behind
+				// empty in the editor. Normalised rather than assumed, for the
+				// same reason single-roundup.php normalises its post object.
+				if ( is_array( $e4c_img ) ) {
+					$e4c_img = $e4c_img['ID'] ?? 0;
+				}
+
+				$e4c_img = (int) $e4c_img;
+
+				if ( $e4c_img ) {
+					$e4c_shots[] = array(
+						'id'      => $e4c_img,
+						'caption' => is_array( $e4c_row ) ? (string) ( $e4c_row['caption'] ?? '' ) : '',
+					);
+				}
+			}
+			?>
+			<?php if ( $e4c_shots ) : ?>
+				<section class="e4c-shots" aria-labelledby="e4c-shots-label">
+					<h2 class="e4c-section-title" id="e4c-shots-label"><?php esc_html_e( 'In the house', 'e4c' ); ?></h2>
+
+					<ul class="e4c-shots__grid">
+						<?php foreach ( $e4c_shots as $e4c_shot ) : ?>
+							<li class="e4c-shot">
+								<figure>
+									<?php
+									echo wp_get_attachment_image(
+										$e4c_shot['id'],
+										'e4c-card',
+										false,
+										array(
+											'loading' => 'lazy',
+											'alt'     => $e4c_shot['caption'],
+										)
+									);
+									?>
+									<?php if ( $e4c_shot['caption'] ) : ?>
+										<figcaption><?php echo esc_html( $e4c_shot['caption'] ); ?></figcaption>
+									<?php endif; ?>
+								</figure>
+							</li>
+						<?php endforeach; ?>
+					</ul>
+				</section>
+			<?php endif; ?>
+		<?php endif; ?>
+
 		<?php if ( $e4c_specs ) : ?>
 			<section class="e4c-after-article">
 				<h2 class="e4c-section-title"><?php esc_html_e( 'Specifications', 'e4c' ); ?></h2>
