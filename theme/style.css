@@ -484,10 +484,22 @@ img, svg, video { max-width: 100%; height: auto; }
    produced a hero roughly 725px tall against 245px of title and dek, leaving
    about 445px of empty column beside it.
 
-   object-fit: cover means the worst an undersized upload can now do is look
-   soft, not break the layout. */
+   The box stays fixed either way, so the worst an undersized upload can do is
+   look soft rather than break the layout.
+
+   contain, not cover, chosen 2026-08-16. cover fills the box and crops whatever
+   does not fit, which silently beheads a portrait photo: a 147x220 upload was
+   scaled up 3.3x and then had its top and bottom cut away, so the hero showed a
+   blurry fragment of a cat. contain fits the whole image inside the box and
+   fills the remainder with the figure's own background, so nothing is ever cut
+   off and a mis-shaped upload reads as a framed photo rather than a broken one.
+
+   The cost is honest and worth stating: a portrait image in a 16:9 box leaves
+   wide bars either side and occupies a fraction of the space. That is a
+   prompt to upload a landscape photo, which is the actual fix, and it is a far
+   better failure than cropping the subject out of frame. */
 .e4c-hero__figure img {
-	display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+	display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain;
 	border-radius: var(--wp--custom--radius-card); background: var(--e4c-surface);
 }
 
